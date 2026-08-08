@@ -283,9 +283,22 @@
 
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
           <sc-for list="{{ chips }}" as="c" hint-placeholder-count="7">
-            <button type="button" onClick="{{ c.onRun }}" disabled="{{ aiBusy }}" style="padding:6px 10px;font-size:12px;background:#fff;border:1px solid var(--color-neutral-400);cursor:pointer;font-family:var(--font-heading);font-weight:700" style-hover="border-color:var(--color-accent);color:var(--color-accent-700)">{{ c.label }}</button>
+            <button type="button" onClick="{{ c.onRun }}" disabled="{{ aiBusy }}" style="padding:6px 10px;font-size:12px;background:{{ c.bg }};color:{{ c.fg }};border:1px solid {{ c.border }};cursor:pointer;font-family:var(--font-heading);font-weight:700;opacity:{{ c.opacity }}" style-hover="border-color:var(--color-accent);color:var(--color-accent-700)">{{ c.label }}</button>
           </sc-for>
         </div>
+
+        <sc-if value="{{ aiBusy }}" hint-placeholder-val="{{ false }}">
+          <div style="border:2px solid var(--color-accent);background:#fff;padding:12px;margin-bottom:16px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px">
+              <span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-accent-700);font-family:var(--font-heading);font-weight:700">{{ aiTaskLabel }}</span>
+              <span style="font-size:11px;color:var(--color-neutral-600);font-variant-numeric:tabular-nums">{{ aiElapsed }}</span>
+            </div>
+            <div style="height:4px;background:var(--color-neutral-200);overflow:hidden">
+              <div style="height:100%;width:{{ aiBarWidth }};background:var(--color-accent);transition:width 0.4s linear"></div>
+            </div>
+            <p style="font-size:11.5px;line-height:1.5;color:var(--color-neutral-700);margin:8px 0 0">{{ aiStage }}</p>
+          </div>
+        </sc-if>
 
         <sc-if value="{{ hasPatch }}" hint-placeholder-val="{{ false }}">
           <div style="border:2px solid var(--color-accent);background:#fff;padding:12px;margin-bottom:16px">
@@ -375,8 +388,35 @@ class Component extends DCLogic {
     provider: 'anthropic', aiKey: '', aiModel: 'claude-opus-4-6', remember: true,
     modelList: PROVIDERS.anthropic.fallback, modelNote: 'Default list — enter a key to load your account\u2019s models',
     aiBusy: false, chatLog: [], chatText: '', patch: null,
+    aiTask: '', aiStage: '', aiSeconds: 0, aiChars: 0,
   };
   modelCache = {};
+
+  /* The provider gives no progress events on a single completion, so the bar
+     is an honest approximation: it advances against a typical response time
+     for the task and stalls at 92% rather than pretending to finish. Elapsed
+     seconds are real, and the stage text says what is actually happening. */
+  startTask(label, expected) {
+    this.taskExpected = expected || 20;
+    this.setState({ aiBusy: true, aiTask: label, aiSeconds: 0,
+                    aiStage: 'Sending request to ' + PROVIDERS[this.state.provider].label + '…' });
+    clearInterval(this.taskTimer);
+    this.taskTimer = setInterval(() => {
+      const s = this.state.aiSeconds + 1;
+      let stage = this.state.aiStage;
+      if (s === 2) stage = 'Waiting for the model to respond…';
+      else if (s === Math.round(this.taskExpected * 0.6)) stage = 'Still working — long inputs take longer.';
+      else if (s === this.taskExpected + 15) stage = 'Taking unusually long. Reasoning models can be slow; try a non-reasoning model if this keeps happening.';
+      this.setState({ aiSeconds: s, aiStage: stage });
+    }, 1000);
+  }
+
+  endTask() {
+    clearInterval(this.taskTimer);
+    this.setState({ aiBusy: false, aiTask: '', aiStage: '', aiSeconds: 0 });
+  }
+
+  componentWillUnmount() { clearInterval(this.taskTimer); }
 
   async componentDidMount() {
     try {
@@ -636,16 +676,29 @@ References: ${(d().references || []).length}` },
   }
 
   async runChip(chip) {
-    this.setState({ aiBusy: true, status: 'Asking ' + PROVIDERS[this.state.provider].label + '…', dot: 'var(--color-accent)' });
+    const prompt = chip.prompt();
+    // Bigger inputs genuinely take longer; scale the expectation with them.
+    const expected = Math.min(90, 8 + Math.round(prompt.length / 400));
+    this.activeChip = chip.id;
+    this.startTask(chip.label, expected);
+    this.setState({ status: 'Asking ' + PROVIDERS[this.state.provider].label + '…', dot: 'var(--color-accent)' });
+    const t0 = Date.now();
     try {
-      const text = await this.aiCall(chip.prompt());
+      const text = await this.aiCall(prompt);
+      const secs = ((Date.now() - t0) / 1000).toFixed(1);
+      this.activeChip = null;
+      this.endTask();
       this.setState({
         patch: { field: chip.field, label: chip.label, text },
-        status: 'Ready', dot: 'var(--color-neutral-800)', aiBusy: false,
-        chatLog: [...this.state.chatLog, { who: chip.label, text, color: 'var(--color-accent-700)' }],
+        status: 'Ready', dot: 'var(--color-neutral-800)',
+        chatLog: [...this.state.chatLog, {
+          who: `${chip.label} · ${secs}s · ${text.length} chars`,
+          text, color: 'var(--color-accent-700)' }],
       });
     } catch (e) {
-      this.setState({ aiBusy: false, status: 'AI failed: ' + e.message, dot: 'var(--color-accent)',
+      this.activeChip = null;
+      this.endTask();
+      this.setState({ status: 'AI failed: ' + e.message, dot: 'var(--color-accent)',
         chatLog: [...this.state.chatLog, { who: 'Error', text: e.message, color: 'var(--color-accent)' }] });
     }
   }
@@ -686,7 +739,8 @@ References: ${(d().references || []).length}` },
   async send() {
     const q = this.state.chatText.trim();
     if (!q) return;
-    this.setState({ chatText: '', aiBusy: true,
+    this.startTask('Chat', 20);
+    this.setState({ chatText: '',
       chatLog: [...this.state.chatLog, { who: 'You', text: q, color: 'var(--color-neutral-700)' }] });
     try {
       const d = this.state.doc || {};
@@ -700,10 +754,12 @@ Keywords: ${(d.keywords || []).join('; ')}
 Sections: ${(d.sections || []).map(s => s.heading).join(' / ')}
 References:
 ${(d.references || []).join('\n')}`);
-      this.setState({ aiBusy: false,
+      this.endTask();
+      this.setState({
         chatLog: [...this.state.chatLog, { who: PROVIDERS[this.state.provider].label, text, color: 'var(--color-accent-700)' }] });
     } catch (e) {
-      this.setState({ aiBusy: false,
+      this.endTask();
+      this.setState({
         chatLog: [...this.state.chatLog, { who: 'Error', text: e.message, color: 'var(--color-accent)' }] });
     }
   }
@@ -802,7 +858,21 @@ ${(d.references || []).join('\n')}`);
       remember: this.state.remember,
       aiBusy: this.state.aiBusy,
 
-      chips: this.chipDefs().map(c => ({ label: c.label, onRun: () => this.runChip(c) })),
+      chips: this.chipDefs().map(c => {
+        const active = this.activeChip === c.id;
+        return {
+          label: active ? c.label + ' …' : c.label,
+          bg: active ? 'var(--color-accent)' : '#fff',
+          fg: active ? '#fff' : 'var(--color-text)',
+          border: active ? 'var(--color-accent)' : 'var(--color-neutral-400)',
+          opacity: this.state.aiBusy && !active ? '0.45' : '1',
+          onRun: () => this.runChip(c),
+        };
+      }),
+      aiTaskLabel: this.state.aiTask,
+      aiStage: this.state.aiStage,
+      aiElapsed: this.state.aiSeconds + 's',
+      aiBarWidth: Math.min(92, Math.round((this.state.aiSeconds / (this.taskExpected || 20)) * 92)) + '%',
       hasPatch: !!this.state.patch,
       patchLabel: this.state.patch?.label || '',
       patchPreview: (this.state.patch?.text || '').slice(0, 1200),
