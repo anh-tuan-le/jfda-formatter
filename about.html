@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JFDA Manuscript Formatter</title>
+<link rel="stylesheet" href="_ds/modernist-82df59b1-2130-4ec5-86e5-0abeef7a2ebe/styles.css">
+<script src="_ds/modernist-82df59b1-2130-4ec5-86e5-0abeef7a2ebe/_ds_bundle.js"></script>
+<style>
+  body { margin: 0; background: var(--color-bg); color: var(--color-text); }
+  a { color: var(--color-accent-700); text-decoration: none; border-bottom: 1px solid currentColor; }
+  a:hover { color: var(--color-accent); }
+  a:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+</style>
+</helmet>
+
+<div style="max-width:1120px;margin:0 auto;padding:0 32px 96px">
+
+  <header style="display:flex;justify-content:space-between;align-items:baseline;gap:24px;padding:28px 0;border-bottom:2px solid var(--color-divider)">
+    <span style="font-family:var(--font-heading);font-weight:700;font-size:15px;letter-spacing:0.02em">JFDA&nbsp;&nbsp;FORMATTER</span>
+    <span style="font-family:var(--font-body);font-size:13px;opacity:0.7">Journal of Finance and Data Analytics</span>
+  </header>
+
+  <section style="display:grid;grid-template-columns:2fr 1fr;gap:48px;padding:72px 0 64px;border-bottom:2px solid var(--color-divider)">
+    <div>
+      <h1 style="font-family:var(--font-heading);font-weight:700;font-size:clamp(40px,6vw,76px);line-height:1.02;letter-spacing:-0.02em;margin:0 0 28px;text-wrap:pretty">Submissions in, APA&nbsp;7 out.</h1>
+      <p style="font-family:var(--font-body);font-size:19px;line-height:1.5;max-width:52ch;margin:0 0 36px;text-wrap:pretty">A browser tool that parses an author's manuscript — whatever format it arrives in — into the journal's template, then helps you fix the citations, the abstract, and the reference list before it reaches typesetting.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a href="index.html" class="btn btn-primary" style="border-bottom:none">Open the formatter</a>
+        <a href="#how" class="btn btn-secondary" style="border-bottom:none">How it works</a>
+      </div>
+    </div>
+    <div style="align-self:end">
+      <p style="font-family:var(--font-body);font-size:13px;line-height:1.6;opacity:0.75;margin:0">Runs in the browser. Nothing to install. Manuscripts are processed in memory and discarded — they are never stored on the server.</p>
+    </div>
+  </section>
+
+  <section style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:2px solid var(--color-divider)">
+    <div style="padding:32px 24px 32px 0">
+      <div style="font-family:var(--font-heading);font-weight:700;font-size:40px;line-height:1">8</div>
+      <div style="font-family:var(--font-body);font-size:13px;margin-top:6px;opacity:0.75">input formats</div>
+    </div>
+    <div style="padding:32px 24px;border-left:2px solid var(--color-divider)">
+      <div style="font-family:var(--font-heading);font-weight:700;font-size:40px;line-height:1">APA&nbsp;7</div>
+      <div style="font-family:var(--font-body);font-size:13px;margin-top:6px;opacity:0.75">reference style</div>
+    </div>
+    <div style="padding:32px 24px;border-left:2px solid var(--color-divider)">
+      <div style="font-family:var(--font-heading);font-weight:700;font-size:40px;line-height:1">3</div>
+      <div style="font-family:var(--font-body);font-size:13px;margin-top:6px;opacity:0.75">AI providers supported</div>
+    </div>
+    <div style="padding:32px 0 32px 24px;border-left:2px solid var(--color-divider)">
+      <div style="font-family:var(--font-heading);font-weight:700;font-size:40px;line-height:1">0</div>
+      <div style="font-family:var(--font-body);font-size:13px;margin-top:6px;opacity:0.75">files retained</div>
+    </div>
+  </section>
+
+  <section id="how" style="padding:72px 0 0">
+    <h2 style="font-family:var(--font-heading);font-weight:700;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 40px">What it does</h2>
+
+    <div style="display:grid;grid-template-columns:180px 1fr;gap:32px;padding-bottom:36px;border-bottom:2px solid var(--color-divider)">
+      <h3 style="font-family:var(--font-heading);font-weight:700;font-size:22px;line-height:1.15;margin:0">Reads the submission</h3>
+      <p style="font-family:var(--font-body);font-size:16px;line-height:1.55;margin:0;max-width:64ch;text-wrap:pretty">PDF, DOCX, PPTX, Markdown, plain text, CSV, JSON and HTML. It works from paragraph styles rather than font sizes, so it still finds the structure in exports that have none — SSRN downloads, authors glued into one line, unnumbered sections, captions attached to the wrong paragraph.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:180px 1fr;gap:32px;padding:36px 0;border-bottom:2px solid var(--color-divider)">
+      <h3 style="font-family:var(--font-heading);font-weight:700;font-size:22px;line-height:1.15;margin:0">Rebuilds it to template</h3>
+      <p style="font-family:var(--font-body);font-size:16px;line-height:1.55;margin:0;max-width:64ch;text-wrap:pretty">Front matter, authors and affiliations, abstract, keywords, JEL codes, numbered sections, tables, figures and back matter are placed into the journal's own .docx template. Sections renumber to match. A live PDF preview shows the result as you work.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:180px 1fr;gap:32px;padding:36px 0;border-bottom:2px solid var(--color-divider)">
+      <h3 style="font-family:var(--font-heading);font-weight:700;font-size:22px;line-height:1.15;margin:0">Fixes the citations</h3>
+      <p style="font-family:var(--font-body);font-size:16px;line-height:1.55;margin:0;max-width:64ch;text-wrap:pretty">Numeric citations convert to author–date. Legal instruments keep their short forms. Reference lists rewrite to APA 7 with real italics on journal names and volume numbers, and in-text citations then sync to match the list. Every change is shown for approval before it is applied.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:180px 1fr;gap:32px;padding:36px 0">
+      <h3 style="font-family:var(--font-heading);font-weight:700;font-size:22px;line-height:1.15;margin:0">Bring your own key</h3>
+      <p style="font-family:var(--font-body);font-size:16px;line-height:1.55;margin:0;max-width:64ch;text-wrap:pretty">The AI features need an API key from Anthropic, OpenAI or Google. Your key is stored in your own browser and calls go directly from your browser to the provider — it is never sent to this server and never shared with other editors. Parsing, template rebuilding and export all work without a key.</p>
+    </div>
+  </section>
+
+  <section style="background:var(--color-accent);color:#fff;margin-top:24px;padding:64px 48px">
+    <p style="font-family:var(--font-heading);font-weight:700;font-size:clamp(28px,4vw,44px);line-height:1.1;letter-spacing:-0.01em;margin:0 0 32px;max-width:22ch;text-wrap:pretty">Open it, drop in a manuscript, download the formatted file.</p>
+    <a href="index.html" style="display:inline-block;background:#fff;color:var(--color-accent-700);font-family:var(--font-heading);font-weight:700;font-size:15px;padding:14px 24px;border-bottom:none">Open the formatter</a>
+  </section>
+
+  <footer style="display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;padding:28px 0;font-family:var(--font-body);font-size:13px;opacity:0.75">
+    <span>Journal of Finance and Data Analytics</span>
+    <a href="https://github.com/YOUR-USERNAME/jfda-formatter">Source on GitHub</a>
+  </footer>
+
+</div>
+
+</x-dc>
+</body>
+</html>

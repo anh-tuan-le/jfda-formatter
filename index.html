@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JFDA Formatter — Editorial Tool</title>
+<link rel="stylesheet" href="_ds/modernist-82df59b1-2130-4ec5-86e5-0abeef7a2ebe/styles.css">
+<script src="_ds/modernist-82df59b1-2130-4ec5-86e5-0abeef7a2ebe/_ds_bundle.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; background: var(--color-bg); color: var(--color-text); }
+  a { color: var(--color-accent-700); }
+  a:hover { color: var(--color-accent); }
+  button, input, select, textarea { font-family: var(--font-body); color: inherit; font-size: 14px; }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+  /* Layout — the only rules that cannot be inline, because they are breakpoints. */
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(300px, 350px) minmax(430px, 1fr);
+    min-height: 0; flex: 1 1 auto;
+  }
+  .pane { min-width: 0; overflow-y: auto; }
+  .pane-form { border-right: 2px solid var(--color-divider); background: #fff; }
+  .pane-rail { border-right: 2px solid var(--color-divider); background: var(--color-bg); }
+  .pane-doc { background: var(--color-neutral-100); display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
+  @media (max-width: 1200px) {
+    .layout { grid-template-columns: minmax(0, 1fr) minmax(280px, 330px); }
+    /* Two-column mode stacks the preview below, so the page must scroll as a
+       whole — otherwise the auto-sized first row is squeezed to a sliver. */
+    .shell { height: auto; min-height: 100vh; }
+    .pane { overflow: visible; }
+    .pane-doc { grid-column: 1 / -1; border-top: 2px solid var(--color-divider); height: 80vh; }
+    .topbar { position: static; }
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    .pane { overflow: visible; }
+    .pane-form, .pane-rail { border-right: 0; border-bottom: 2px solid var(--color-divider); }
+    .pane-doc { min-height: 80vh; }
+    .shell { height: auto; min-height: 100vh; }
+    .topbar { position: static; }
+    .pair { grid-template-columns: 1fr; }
+  }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* Preview — a printed-page approximation, not a Word render. */
+  .pv h1.t { font-family: var(--font-heading); font-size: 21px; line-height: 1.2; margin: 0 0 10px; }
+  .pv p.au { font-size: 13px; margin: 0 0 18px; color: var(--color-neutral-700); }
+  .pv h2.hh { font-family: var(--font-heading); font-size: 15px; margin: 22px 0 8px; }
+  .pv h3.sh { font-family: var(--font-heading); font-size: 13px; margin: 16px 0 6px; }
+  .pv p { font-size: 13px; line-height: 1.6; margin: 0 0 10px; text-align: justify; }
+  .pv p.ref { padding-left: 28px; text-indent: -28px; margin-bottom: 6px; text-align: left; }
+  .pv p.eq { text-align: center; font-style: italic; }
+  .pv p.cap { font-size: 11.5px; font-weight: 700; margin: 0 0 6px; text-align: left; }
+  .pv table { border-collapse: collapse; width: 100%; font-size: 11.5px; margin-bottom: 14px; }
+  .pv th, .pv td { border-top: 1px solid var(--color-divider); padding: 5px 8px; text-align: left; }
+  .pv thead th { border-bottom: 1px solid var(--color-divider); }
+  .pv .tw, .pv .fig { margin: 16px 0; }
+  .pv .figbox { border: 2px solid var(--color-divider); padding: 28px; text-align: center;
+                font-size: 12px; color: var(--color-neutral-600); margin-bottom: 6px; }
+  .pv ul { font-size: 13px; line-height: 1.6; padding-left: 20px; }
+
+  details.bm > summary::-webkit-details-marker { display: none; }
+  details.bm > summary { list-style: none; }
+  details.bm > summary::after { content: "+"; color: var(--color-accent); font-weight: 700; }
+  details.bm[open] > summary::after { content: "\2013"; }
+</style>
+</helmet>
+
+<div class="shell" style="display:flex;flex-direction:column;height:100vh;font-family:var(--font-body)">
+
+  <header class="topbar" style="display:flex;align-items:stretch;justify-content:space-between;background:#fff;border-bottom:2px solid var(--color-divider);flex:0 0 auto;position:sticky;top:0;z-index:40;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 24px;border-right:2px solid var(--color-divider)">
+      <span style="background:var(--color-accent);color:#fff;font-family:var(--font-heading);font-weight:700;font-size:14px;letter-spacing:0.06em;padding:6px 8px">JFDA</span>
+      <span style="display:flex;flex-direction:column;line-height:1.2">
+        <span style="font-family:var(--font-heading);font-weight:700;font-size:15px">Manuscript Formatter</span>
+        <span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-600)">Runs entirely in your browser</span>
+      </span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 24px;border-left:2px solid var(--color-divider);flex-wrap:wrap">
+      <span style="display:inline-flex;align-items:center;gap:7px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 8px;border:1px solid var(--color-neutral-300)">
+        <span style="width:7px;height:7px;background:{{ statusDot }};display:block"></span>{{ statusText }}
+      </span>
+      <a href="about.html" style="font-family:var(--font-heading);font-weight:700;font-size:13px;padding:9px 16px;border:2px solid transparent;text-decoration:none">About</a>
+      <button type="button" onClick="{{ onReset }}" style="font-family:var(--font-heading);font-weight:700;font-size:13px;padding:9px 16px;background:transparent;border:2px solid var(--color-neutral-300);cursor:pointer" style-hover="border-color:var(--color-text)">Clear</button>
+      <button type="button" onClick="{{ onDownload }}" disabled="{{ noDoc }}" style="font-family:var(--font-heading);font-weight:700;font-size:13px;padding:9px 16px;background:var(--color-accent);color:#fff;border:2px solid var(--color-accent);cursor:pointer" style-hover="background:var(--color-accent-600);border-color:var(--color-accent-600)">Download .docx</button>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <!-- ============================ FORM ============================ -->
+    <section class="pane pane-form">
+
+      <div style="border-bottom:2px solid var(--color-divider);padding:24px;background:var(--color-neutral-100)">
+        <div style="display:flex;align-items:baseline;gap:12px;padding-bottom:12px">
+          <span style="font-family:var(--font-heading);font-weight:700;font-size:12px;color:var(--color-accent)">01</span>
+          <h2 style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;margin:0;font-family:var(--font-heading);font-weight:700">Source</h2>
+        </div>
+        <div onDragOver="{{ onDragOver }}" onDrop="{{ onDrop }}" onClick="{{ onBrowse }}" style="display:flex;align-items:center;gap:16px;border:2px dashed var(--color-neutral-400);padding:16px 24px;cursor:pointer;background:#fff" style-hover="border-color:var(--color-accent)">
+          <span style="width:34px;height:34px;flex:none;display:grid;place-items:center;background:var(--color-accent);color:#fff;font-size:16px;font-weight:700">&#8595;</span>
+          <span style="display:flex;flex-direction:column;gap:2px">
+            <span style="font-family:var(--font-heading);font-weight:700;font-size:15px">Drop manuscript here</span>
+            <span style="font-size:12px;color:var(--color-neutral-600)">or click to browse &middot; .docx .pdf .pptx .md .txt .html .json + figures</span>
+          </span>
+        </div>
+        <input type="file" ref="{{ fileRef }}" multiple="{{ true }}" accept=".docx,.pdf,.pptx,.md,.markdown,.txt,.html,.htm,.json,.csv,.png,.jpg,.jpeg,.gif,.webp,.bmp" style="display:none" onChange="{{ onPick }}">
+
+        <sc-if value="{{ fileName }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;border:1px solid var(--color-neutral-300);background:#fff;padding:8px 12px">
+            <span style="display:flex;flex-direction:column;min-width:0">
+              <span style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ fileName }}</span>
+              <span style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-neutral-600)">{{ fileMeta }}</span>
+            </span>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ hasWarnings }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:16px 24px;border-bottom:2px solid var(--color-divider);background:var(--color-accent-100)">
+          <sc-for list="{{ warnings }}" as="w" hint-placeholder-count="1">
+            <p style="font-size:12px;margin:0 0 6px;line-height:1.55;border-left:2px solid var(--color-accent);padding-left:12px">{{ w }}</p>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <div style="display:flex;align-items:baseline;gap:12px;padding:16px 24px 0">
+        <span style="font-family:var(--font-heading);font-weight:700;font-size:12px;color:var(--color-accent)">02</span>
+        <h2 style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;margin:0;font-family:var(--font-heading);font-weight:700">Manuscript metadata</h2>
+      </div>
+
+      <div style="padding:24px;border-bottom:2px solid var(--color-divider)">
+        <label style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
+          <span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Manuscript type</span>
+          <select value="{{ mtype }}" onChange="{{ onType }}" style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);border-radius:0;padding:9px 12px">
+            <option value="Research Article">Research Article</option>
+            <option value="Review Article">Review Article</option>
+            <option value="Short Communication">Short Communication</option>
+            <option value="Case Study">Case Study</option>
+            <option value="Perspective">Perspective</option>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:5px">
+          <span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Title</span>
+          <textarea rows="2" value="{{ title }}" onChange="{{ onTitle }}" style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);border-radius:0;padding:9px 12px;line-height:1.5;resize:vertical"></textarea>
+        </label>
+      </div>
+
+      <div style="padding:24px;border-bottom:2px solid var(--color-divider)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+          <h3 style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;margin:0;font-family:var(--font-heading);font-weight:700">Authors</h3>
+          <button type="button" onClick="{{ onAddAuthor }}" style="background:transparent;border:1px solid var(--color-neutral-400);padding:4px 8px;font-size:11px;letter-spacing:0.04em;text-transform:uppercase;font-family:var(--font-heading);font-weight:700;cursor:pointer" style-hover="border-color:var(--color-accent);color:var(--color-accent-700)">&#65291; add</button>
+        </div>
+        <sc-for list="{{ authorRows }}" as="a" hint-placeholder-count="2">
+          <div class="pair" style="border:1px solid var(--color-neutral-300);padding:16px;margin-bottom:12px;background:var(--color-neutral-100)">
+            <div style="grid-column:1 / -1;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--color-neutral-300);padding-bottom:8px">
+              <span style="font-family:var(--font-heading);font-weight:700;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;flex:1">Author {{ a.n }}</span>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                <input type="checkbox" checked="{{ a.corresponding }}" onChange="{{ a.onCorr }}" style="accent-color:var(--color-accent);width:15px;height:15px">
+                <span>Corresponding</span>
+              </label>
+              <button type="button" onClick="{{ a.onRemove }}" style="background:transparent;border:1px solid transparent;padding:2px 6px;font-size:12px;color:var(--color-neutral-600);cursor:pointer" style-hover="color:var(--color-accent);border-color:var(--color-neutral-300)">&times;</button>
+            </div>
+            <input placeholder="Name" value="{{ a.name }}" onChange="{{ a.onName }}" style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);padding:9px 12px">
+            <input placeholder="Email" value="{{ a.email }}" onChange="{{ a.onEmail }}" style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);padding:9px 12px">
+            <input placeholder="Position" value="{{ a.position }}" onChange="{{ a.onPosition }}" style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);padding:9px 12px">
+            <input placeholder="Organisation" value="{{ a.organisation }}" onChange="{{ a.onOrg }}" style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);padding:9px 12px">
+            <input placeholder="Country" value="{{ a.country }}" onChange="{{ a.onCountry }}" style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);padding:9px 12px">
+            <input placeholder="ORCID" value="{{ a.orcid }}" onChange="{{ a.onOrcid }}" style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);padding:9px 12px">
+          </div>
+        </sc-for>
+        <sc-if value="{{ noAuthors }}" hint-placeholder-val="{{ false }}">
+          <p style="font-size:12px;color:var(--color-neutral-600);border:1px dashed var(--color-neutral-300);padding:16px;margin:0">No authors parsed. Click <strong>+ add</strong> to enter them by hand.</p>
+        </sc-if>
+      </div>
+
+      <div style="padding:24px;border-bottom:2px solid var(--color-divider)">
+        <h3 style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 12px;font-family:var(--font-heading);font-weight:700">Abstract</h3>
+        <textarea rows="8" value="{{ abstract }}" onChange="{{ onAbstract }}" placeholder="Single paragraph, up to ~200 words." style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);padding:9px 12px;line-height:1.5;resize:vertical"></textarea>
+        <span style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:{{ abstractColor }};display:block;margin-top:5px">{{ abstractCount }}</span>
+      </div>
+
+      <div class="pair" style="padding:24px;border-bottom:2px solid var(--color-divider)">
+        <label style="display:flex;flex-direction:column;gap:5px">
+          <span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Keywords</span>
+          <input value="{{ keywords }}" onChange="{{ onKeywords }}" placeholder="up to 5, separated by ;" style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);padding:9px 12px">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:5px">
+          <span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">JEL codes</span>
+          <input value="{{ jel }}" onChange="{{ onJel }}" placeholder="up to 3, e.g. G21, O16" style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);padding:9px 12px">
+        </label>
+      </div>
+
+      <div style="padding:24px;border-bottom:2px solid var(--color-divider)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+          <h3 style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;margin:0;font-family:var(--font-heading);font-weight:700">Figures</h3>
+          <button type="button" onClick="{{ onAddFigures }}" style="background:transparent;border:1px solid var(--color-neutral-400);padding:4px 8px;font-size:11px;letter-spacing:0.04em;text-transform:uppercase;font-family:var(--font-heading);font-weight:700;cursor:pointer" style-hover="border-color:var(--color-accent);color:var(--color-accent-700)">&#65291; add</button>
+        </div>
+        <input type="file" ref="{{ figRef }}" multiple="{{ true }}" accept=".png,.jpg,.jpeg,.gif,.webp,.bmp" style="display:none" onChange="{{ onFigPick }}">
+        <sc-for list="{{ figureRows }}" as="f" hint-placeholder-count="0">
+          <div style="display:grid;grid-template-columns:72px 1fr auto;gap:12px;align-items:start;border:1px solid var(--color-neutral-300);border-left:3px solid var(--color-neutral-800);padding:8px;background:#fff;margin-bottom:8px">
+            <span style="width:72px;height:56px;background-color:var(--color-neutral-200);background-image:{{ f.bg }};background-size:cover;background-position:center;filter:grayscale(1) contrast(1.08);display:block"></span>
+            <span style="min-width:0;display:flex;flex-direction:column;gap:5px">
+              <input value="{{ f.label }}" onChange="{{ f.onLabel }}" style="padding:5px 8px;font-size:13px;background:#fff;border:1px solid var(--color-neutral-400)">
+              <span style="font-size:11px;color:var(--color-neutral-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.meta }}</span>
+            </span>
+            <button type="button" onClick="{{ f.onRemove }}" style="background:transparent;border:1px solid transparent;padding:2px 6px;font-size:12px;color:var(--color-neutral-600);cursor:pointer" style-hover="color:var(--color-accent);border-color:var(--color-neutral-300)">&times;</button>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noFigures }}" hint-placeholder-val="{{ true }}">
+          <p style="font-size:12px;color:var(--color-neutral-600);border:1px dashed var(--color-neutral-300);padding:16px;margin:0">No figures. Images inside a .docx are extracted automatically; otherwise drop them in the upload pane or click <strong>+ add</strong>.</p>
+        </sc-if>
+      </div>
+
+      <div style="padding:24px;border-bottom:2px solid var(--color-divider)">
+        <h3 style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 12px;font-family:var(--font-heading);font-weight:700">Back matter</h3>
+        <sc-for list="{{ backMatter }}" as="b" hint-placeholder-count="5">
+          <details class="bm" open="{{ b.open }}" style="border:1px solid var(--color-neutral-300);margin-bottom:8px;background:#fff">
+            <summary style="cursor:pointer;padding:8px 12px;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between">{{ b.label }}</summary>
+            <textarea rows="3" value="{{ b.value }}" onChange="{{ b.onChange }}" style="width:100%;border:0;border-top:1px solid var(--color-neutral-300);padding:9px 12px;line-height:1.5;resize:vertical"></textarea>
+          </details>
+        </sc-for>
+      </div>
+
+      <div style="padding:24px">
+        <h3 style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 12px;font-family:var(--font-heading);font-weight:700">Structure</h3>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+          <sc-for list="{{ stats }}" as="s" hint-placeholder-count="5">
+            <div>
+              <div style="font-family:var(--font-heading);font-weight:700;font-size:26px;line-height:1">{{ s.n }}</div>
+              <div style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-neutral-600);margin-top:4px">{{ s.label }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <p style="font-size:12px;line-height:1.6;color:var(--color-neutral-700);margin:16px 0 0;border-left:2px solid var(--color-neutral-300);padding-left:12px">Sections, tables and references are passed through from the parsed source. Edit them in the source file and re-upload for structural changes.</p>
+        <button type="button" onClick="{{ onDownload }}" disabled="{{ noDoc }}" style="margin-top:20px;width:100%;display:block;text-align:left;font-family:var(--font-heading);font-weight:700;font-size:15px;padding:13px 24px;background:var(--color-accent);color:#fff;border:2px solid var(--color-accent);cursor:pointer" style-hover="background:var(--color-accent-600);border-color:var(--color-accent-600)">Generate &amp; Download</button>
+      </div>
+
+    </section>
+
+    <!-- ============================ AI RAIL ============================ -->
+    <section class="pane pane-rail">
+      <div style="padding:24px">
+        <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:16px">
+          <span style="font-family:var(--font-heading);font-weight:700;font-size:12px;color:var(--color-accent)">03</span>
+          <h2 style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;margin:0;font-family:var(--font-heading);font-weight:700">AI assist</h2>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">
+          <sc-for list="{{ providers }}" as="p" hint-placeholder-count="4">
+            <button type="button" onClick="{{ p.onPick }}" style="padding:7px 4px;font-size:12px;font-family:var(--font-heading);font-weight:700;cursor:pointer;background:{{ p.bg }};color:{{ p.fg }};border:1px solid {{ p.border }}">{{ p.label }}</button>
+          </sc-for>
+        </div>
+
+        <label style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
+          <span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">API key</span>
+          <input type="password" value="{{ aiKey }}" onChange="{{ onKey }}" placeholder="{{ keyHint }}" style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);padding:9px 12px">
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
+          <span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Model</span>
+          <span style="display:flex;gap:6px">
+            <select value="{{ aiModel }}" onChange="{{ onModel }}" style="flex:1 1 auto;min-width:0;background:#fff;border:1px solid var(--color-neutral-400);padding:9px 12px">
+              <sc-for list="{{ modelList }}" as="m" hint-placeholder-count="3">
+                <option value="{{ m }}">{{ m }}</option>
+              </sc-for>
+            </select>
+            <button type="button" onClick="{{ onReloadModels }}" title="Reload the model list from your API key" style="flex:0 0 auto;width:34px;cursor:pointer;font-size:15px;background:#fff;border:1px solid var(--color-neutral-400)">&#8635;</button>
+          </span>
+          <span style="font-size:11px;color:var(--color-neutral-600);line-height:1.4">{{ modelNote }}</span>
+        </label>
+
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:16px">
+          <input type="checkbox" checked="{{ remember }}" onChange="{{ onRemember }}" style="accent-color:var(--color-accent);width:15px;height:15px">
+          <span>Remember key in this browser</span>
+        </label>
+
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="7">
+            <button type="button" onClick="{{ c.onRun }}" disabled="{{ aiBusy }}" style="padding:6px 10px;font-size:12px;background:#fff;border:1px solid var(--color-neutral-400);cursor:pointer;font-family:var(--font-heading);font-weight:700" style-hover="border-color:var(--color-accent);color:var(--color-accent-700)">{{ c.label }}</button>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ hasPatch }}" hint-placeholder-val="{{ false }}">
+          <div style="border:2px solid var(--color-accent);background:#fff;padding:12px;margin-bottom:16px">
+            <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:8px;font-family:var(--font-heading);font-weight:700">{{ patchLabel }}</div>
+            <div style="font-size:12px;line-height:1.55;max-height:220px;overflow:auto;white-space:pre-wrap;margin-bottom:12px">{{ patchPreview }}</div>
+            <div style="display:flex;gap:6px">
+              <button type="button" onClick="{{ onApply }}" style="font-family:var(--font-heading);font-weight:700;font-size:13px;padding:8px 14px;background:var(--color-accent);color:#fff;border:2px solid var(--color-accent);cursor:pointer">Apply</button>
+              <button type="button" onClick="{{ onDiscard }}" style="font-family:var(--font-heading);font-weight:700;font-size:13px;padding:8px 14px;background:transparent;border:2px solid var(--color-neutral-300);cursor:pointer">Discard</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="border:1px solid var(--color-neutral-300);background:#fff;margin-bottom:12px">
+          <div style="max-height:260px;overflow-y:auto;padding:12px">
+            <sc-if value="{{ noChat }}" hint-placeholder-val="{{ true }}">
+              <p style="font-size:12px;line-height:1.6;color:var(--color-neutral-600);margin:0">Ask for changes in plain language — &ldquo;reformat every reference to APA 7&rdquo;, &ldquo;make section 3 more concise&rdquo;, &ldquo;fix the author affiliations&rdquo;. Changes arrive as a patch you approve.</p>
+            </sc-if>
+            <sc-for list="{{ chatLog }}" as="c" hint-placeholder-count="0">
+              <div style="margin-bottom:12px">
+                <div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:{{ c.color }};margin-bottom:3px;font-family:var(--font-heading);font-weight:700">{{ c.who }}</div>
+                <div style="font-size:12.5px;line-height:1.55;white-space:pre-wrap">{{ c.text }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="border-top:1px solid var(--color-neutral-300);padding:10px">
+            <textarea rows="3" value="{{ chatText }}" onChange="{{ onChatText }}" onKeyDown="{{ onChatKey }}" placeholder="Tell the assistant what to change…" style="width:100%;background:#fff;border:1px solid var(--color-neutral-400);padding:8px 10px;line-height:1.5;resize:vertical;font-size:13px"></textarea>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
+              <button type="button" onClick="{{ onSend }}" disabled="{{ aiBusy }}" style="font-family:var(--font-heading);font-weight:700;font-size:13px;padding:8px 14px;background:var(--color-accent);color:#fff;border:2px solid var(--color-accent);cursor:pointer">Send</button>
+              <button type="button" onClick="{{ onClearChat }}" style="font-family:var(--font-heading);font-weight:700;font-size:13px;padding:8px 14px;background:transparent;border:2px solid var(--color-neutral-300);cursor:pointer">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <p style="font-size:11.5px;line-height:1.6;color:var(--color-neutral-700);margin:0;border-left:2px solid var(--color-neutral-300);padding-left:12px">Your key stays in this browser and is sent only to the provider you pick. Nothing reaches a server of ours — there isn't one.</p>
+      </div>
+    </section>
+
+    <!-- ============================ PREVIEW ============================ -->
+    <section class="pane-doc">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:2px solid var(--color-divider);background:#fff;flex-wrap:wrap">
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <span style="font-family:var(--font-heading);font-weight:700;font-size:12px;color:var(--color-accent)">04</span>
+          <h2 style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;margin:0;font-family:var(--font-heading);font-weight:700">Preview</h2>
+        </div>
+        <span style="font-size:11px;color:var(--color-neutral-600)">Styled approximation — download the .docx for the real layout</span>
+      </div>
+      <div style="overflow-y:auto;background:var(--color-neutral-100);padding:24px 16px">
+        <div class="pv" style="max-width:660px;margin:0 auto;background:#fff;padding:48px 52px;border:1px solid var(--color-neutral-300)">{{ previewNode }}</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PROVIDERS = {
+  anthropic: { label: 'Claude', key: 'sk-ant-…',
+    fallback: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5'] },
+  openai: { label: 'OpenAI', key: 'sk-…',
+    fallback: ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'] },
+  gemini: { label: 'Gemini', key: 'AIza…',
+    fallback: ['gemini-3.1-pro', 'gemini-3.6-flash', 'gemini-3.5-flash'] },
+  custom: { label: 'Custom', key: 'token', fallback: [] },
+};
+
+const AI_SYSTEM = [
+  'You are a meticulous copy editor for the Journal of Finance and Data Analytics.',
+  'House style is APA 7th edition, academic English, sentence case for article titles.',
+  "Preserve the author's meaning, hedging and technical terminology exactly — never strengthen a claim, never invent a citation, statistic, DOI or source.",
+  'If the input is ambiguous or the change would need information you do not have, say so plainly instead of guessing.',
+  'Return only the requested text. No preamble, no commentary, no markdown fences.',
+].join(' ');
+
+const BACK_MATTER = [
+  ['data_availability', 'Data Availability Statement'],
+  ['funding', 'Funding'],
+  ['acknowledgements', 'Acknowledgements'],
+  ['gen_ai', 'Generative AI declaration'],
+  ['conflicts', 'Conflicts of Interest'],
+];
+
+class Component extends DCLogic {
+  state = {
+    doc: null, fileName: '', fileMeta: '', status: 'Starting…', dot: 'var(--color-neutral-400)',
+    preview: '', warnings: [],
+    provider: 'anthropic', aiKey: '', aiModel: 'claude-opus-4-6', remember: true,
+    modelList: PROVIDERS.anthropic.fallback, modelNote: 'Default list — enter a key to load your account\u2019s models',
+    aiBusy: false, chatLog: [], chatText: '', patch: null,
+  };
+  modelCache = {};
+
+  async componentDidMount() {
+    try {
+      const s = JSON.parse(localStorage.getItem('jfda.ai') || '{}');
+      if (s.provider) this.setState({ provider: s.provider });
+      if (s.key) this.setState({ aiKey: s.key });
+      if (s.model) this.setState({ aiModel: s.model });
+      if (s.remember === false) this.setState({ remember: false });
+    } catch (e) { /* first run */ }
+
+    try {
+      const mod = await import('./web/jfda-runtime.js');
+      this.jfda = new mod.JFDA({ base: 'web/', onProgress: (t) => this.setState({ status: t || 'Ready' }) });
+      await this.jfda.boot();
+      this.setState({ status: 'Ready', dot: 'var(--color-neutral-800)' });
+      if (this.state.aiKey) this.refreshModels();
+    } catch (e) {
+      this.setState({ status: 'Failed to start: ' + e.message, dot: 'var(--color-accent)' });
+    }
+  }
+
+  saveAI() {
+    const { provider, aiKey, aiModel, remember } = this.state;
+    localStorage.setItem('jfda.ai', JSON.stringify({
+      provider, model: aiModel, remember, key: remember ? aiKey : '',
+    }));
+  }
+
+  /* ---------------- document ---------------- */
+
+  set(patch) {
+    this.setState({ doc: { ...this.state.doc, ...patch } }, () => this.refreshPreview());
+  }
+
+  async refreshPreview() {
+    if (!this.state.doc || !this.jfda) return;
+    try {
+      this.setState({ preview: await this.jfda.previewHtml(this.state.doc) });
+    } catch (e) {
+      this.setState({ preview: '<p style="color:#ec3013">Preview failed: ' + e.message + '</p>' });
+    }
+  }
+
+  async load(files) {
+    if (!files || !files.length || !this.jfda) return;
+    const list = [...files];
+    const images = list.filter(f => /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name));
+    const main = list.find(f => !images.includes(f));
+
+    if (!main && images.length) return this.addFigures(images);
+    if (!main) return;
+
+    this.setState({ status: 'Reading ' + main.name + '…', dot: 'var(--color-accent)' });
+    try {
+      const doc = await this.jfda.parseFile(main);
+      const figures = doc._figures || [];
+      delete doc._figures;
+      doc.figures = figures.map((f, i) => ({ ...f, label: f.label || 'Figure ' + (i + 1) }));
+      if (!doc.manuscript_type) doc.manuscript_type = 'Research Article';
+
+      const warnings = [];
+      if (!doc.title) warnings.push('No title found — type it below.');
+      if (!(doc.authors || []).length) warnings.push('No authors found. Add them below or the template slots stay blank.');
+      if (!doc.abstract) warnings.push('No abstract found.');
+      if (figures.length) warnings.push(figures.length + ' image(s) recovered. Check they belong in the paper before downloading.');
+
+      this.setState({
+        doc, warnings, status: 'Ready', dot: 'var(--color-neutral-800)',
+        fileName: main.name,
+        fileMeta: (main.name.split('.').pop() || '').toUpperCase() + ' · ' + Math.max(1, Math.round(main.size / 1024)) + ' KB',
+      }, () => { this.refreshPreview(); if (images.length) this.addFigures(images); });
+    } catch (e) {
+      this.setState({ status: 'Could not read that file: ' + e.message, dot: 'var(--color-accent)' });
+    }
+  }
+
+  async addFigures(files) {
+    if (!this.state.doc) return;
+    const added = [];
+    for (const f of files) {
+      const buf = new Uint8Array(await f.arrayBuffer());
+      const ext = (f.name.split('.').pop() || 'png').toLowerCase();
+      const norm = await this.jfda._normaliseImage(buf, ext);
+      if (norm) added.push({ id: 'up' + Date.now() + added.length, name: f.name, label: '', ...norm });
+    }
+    const figures = [...(this.state.doc.figures || []), ...added]
+      .map((f, i) => ({ ...f, label: f.label || 'Figure ' + (i + 1) }));
+    this.set({ figures });
+  }
+
+  /* ---------------- AI ---------------- */
+
+  async fetchModels() {
+    const key = this.state.aiKey.trim();
+    const prov = this.state.provider;
+    if (!key || prov === 'custom') return null;
+
+    if (prov === 'anthropic') {
+      const r = await fetch('https://api.anthropic.com/v1/models?limit=100', {
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01',
+                   'anthropic-dangerous-direct-browser-access': 'true' } });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return (await r.json()).data.map(m => m.id);
+    }
+    if (prov === 'gemini') {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=' + encodeURIComponent(key));
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return (await r.json()).models
+        .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+        .map(m => m.name.replace(/^models\//, ''))
+        .filter(m => !/embedding|aqa|image|tts|veo|imagen/i.test(m));
+    }
+    const r = await fetch('https://api.openai.com/v1/models', { headers: { authorization: 'Bearer ' + key } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return (await r.json()).data.map(m => m.id)
+      .filter(m => /^(gpt|o\d)/i.test(m))
+      .filter(m => !/audio|realtime|image|tts|whisper|embedding|moderation|transcribe/i.test(m));
+  }
+
+  sortModels(list) {
+    const rank = (m) => {
+      let s = 0;
+      const v = m.match(/(\d+)[.-](\d+)/) || [0, 0, 0];
+      s += Number(v[1]) * 1000 + Number(v[2]) * 10;
+      if (/opus|sol|pro|-max/i.test(m)) s += 500;
+      else if (/sonnet|terra|flash(?!-lite)/i.test(m)) s += 300;
+      if (/haiku|luna|lite|nano|mini/i.test(m)) s -= 200;
+      if (/preview|exp|latest|\d{8}/i.test(m)) s -= 50;
+      return -s;
+    };
+    return list.slice().sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  }
+
+  async refreshModels() {
+    const prov = this.state.provider;
+    if (prov === 'custom') return;
+    if (this.modelCache[prov]) {
+      this.setState({ modelList: this.modelCache[prov], modelNote: this.modelCache[prov].length + ' models available on this key' });
+      return;
+    }
+    this.setState({ modelList: PROVIDERS[prov].fallback });
+    if (!this.state.aiKey.trim()) return;
+    this.setState({ modelNote: 'Loading models…' });
+    try {
+      const list = this.sortModels(await this.fetchModels());
+      if (list && list.length) {
+        this.modelCache[prov] = list;
+        this.setState({
+          modelList: list,
+          aiModel: list.includes(this.state.aiModel) ? this.state.aiModel : list[0],
+          modelNote: list.length + ' models available on this key',
+        }, () => this.saveAI());
+      }
+    } catch (e) {
+      this.setState({ modelNote: 'Could not load models (' + e.message + ') — using defaults' });
+    }
+  }
+
+  async aiCall(prompt) {
+    const key = this.state.aiKey.trim();
+    if (!key) throw new Error('Add an API key first');
+    const model = this.state.aiModel;
+    const prov = this.state.provider;
+
+    if (prov === 'anthropic') {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': key,
+                   'anthropic-version': '2023-06-01',
+                   'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model, max_tokens: 16000, system: AI_SYSTEM,
+                               messages: [{ role: 'user', content: prompt }] }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error?.message || 'HTTP ' + r.status);
+      return j.content.map(c => c.text || '').join('').trim();
+    }
+
+    if (prov === 'gemini') {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: AI_SYSTEM }] },
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 16000, temperature: 0.3 },
+        }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error?.message || 'HTTP ' + r.status);
+      return (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
+    }
+
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key },
+      body: JSON.stringify({ model, max_completion_tokens: 16000,
+        messages: [{ role: 'system', content: AI_SYSTEM }, { role: 'user', content: prompt }] }),
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error?.message || 'HTTP ' + r.status);
+    return (j.choices?.[0]?.message?.content || '').trim();
+  }
+
+  chipDefs() {
+    const d = () => this.state.doc || {};
+    return [
+      { id: 'title', label: 'Tighten title', field: 'title',
+        prompt: () => `Tighten this manuscript title. Keep every substantive term; cut filler. Return the title only.\n\n${d().title || ''}` },
+      { id: 'abstract', label: 'Polish abstract', field: 'abstract',
+        prompt: () => `Polish this abstract to a single paragraph of at most 200 words. Keep the findings and hedging exactly as stated. Return the abstract only.\n\n${d().abstract || ''}` },
+      { id: 'keywords', label: 'Keywords & JEL', field: 'keywords_jel',
+        prompt: () => `From this abstract, suggest up to 5 keywords and up to 3 JEL codes.\nReturn exactly two lines:\nKEYWORDS: a; b; c\nJEL: G12, G14\n\n${d().abstract || ''}` },
+      { id: 'references', label: 'APA references', field: 'references',
+        prompt: () => `Reformat this reference list to APA 7th edition. Rules:
+- Journal articles: Author, A. A., & Author, B. B. (Year). Title of article in sentence case. *Journal Name*, *Volume*(Issue), pages. https://doi.org/xxx
+- Mark italics with single asterisks. Italicise the journal name, the volume number, and book/report titles. Do NOT italicise the issue number, page range, DOI or article title.
+- Keep every entry; do not add, remove or invent sources. Sort alphabetically by first author surname.
+- Return one reference per line, nothing else.
+
+${(d().references || []).join('\n')}` },
+      { id: 'synccites', label: 'Sync citations', field: 'sections',
+        prompt: () => `Below is a reference list and the body text. Rewrite every in-text citation so it matches the reference list in APA 7 author-date form. Do not change any other wording. Return the body text only, paragraphs separated by blank lines.
+
+REFERENCES:
+${(d().references || []).join('\n')}
+
+BODY:
+${this.bodyText()}` },
+      { id: 'backmatter', label: 'Back matter', field: 'backmatter',
+        prompt: () => `Draft standard journal back matter for this manuscript. Return exactly these lines, each on its own line, with no other text:
+DATA: ...
+FUNDING: ...
+ACK: ...
+GENAI: ...
+CONFLICTS: ...
+
+Title: ${d().title || ''}
+Abstract: ${d().abstract || ''}` },
+      { id: 'review', label: 'Structure check', field: null,
+        prompt: () => `Review this manuscript's structure against journal norms for an empirical finance paper. List concrete problems only, as short bullets. Do not rewrite anything.
+
+Title: ${d().title || ''}
+Sections: ${(d().sections || []).map(s => s.heading).join(' / ')}
+Abstract words: ${(d().abstract || '').split(/\s+/).filter(Boolean).length}
+References: ${(d().references || []).length}` },
+    ];
+  }
+
+  bodyText() {
+    const out = [];
+    const walk = (list) => (list || []).forEach(s => {
+      out.push(...(s.paragraphs || []));
+      walk(s.subsections);
+    });
+    walk((this.state.doc || {}).sections);
+    return out.join('\n\n');
+  }
+
+  async runChip(chip) {
+    this.setState({ aiBusy: true, status: 'Asking ' + PROVIDERS[this.state.provider].label + '…', dot: 'var(--color-accent)' });
+    try {
+      const text = await this.aiCall(chip.prompt());
+      this.setState({
+        patch: { field: chip.field, label: chip.label, text },
+        status: 'Ready', dot: 'var(--color-neutral-800)', aiBusy: false,
+        chatLog: [...this.state.chatLog, { who: chip.label, text, color: 'var(--color-accent-700)' }],
+      });
+    } catch (e) {
+      this.setState({ aiBusy: false, status: 'AI failed: ' + e.message, dot: 'var(--color-accent)',
+        chatLog: [...this.state.chatLog, { who: 'Error', text: e.message, color: 'var(--color-accent)' }] });
+    }
+  }
+
+  applyPatch() {
+    const p = this.state.patch;
+    if (!p) return;
+    const t = p.text;
+
+    if (p.field === 'title') this.set({ title: t.replace(/^["']|["']$/g, '') });
+    else if (p.field === 'abstract') this.set({ abstract: t });
+    else if (p.field === 'references') this.set({ references: t.split('\n').map(s => s.trim()).filter(Boolean) });
+    else if (p.field === 'keywords_jel') {
+      const kw = (t.match(/KEYWORDS:\s*(.+)/i) || [])[1];
+      const jel = (t.match(/JEL:\s*(.+)/i) || [])[1];
+      const patch = {};
+      if (kw) patch.keywords = kw.split(/[;,]/).map(s => s.trim()).filter(Boolean);
+      if (jel) patch.jel_codes = jel.split(/[,;]/).map(s => s.trim()).filter(Boolean);
+      this.set(patch);
+    } else if (p.field === 'backmatter') {
+      const grab = (k) => (t.match(new RegExp(k + ':\\s*(.+)', 'i')) || [])[1] || '';
+      this.set({ data_availability: grab('DATA'), funding: grab('FUNDING'),
+                 acknowledgements: grab('ACK'), gen_ai: grab('GENAI'), conflicts: grab('CONFLICTS') });
+    } else if (p.field === 'sections') {
+      const paras = t.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+      const sections = JSON.parse(JSON.stringify(this.state.doc.sections || []));
+      let i = 0;
+      const walk = (list) => (list || []).forEach(s => {
+        s.paragraphs = (s.paragraphs || []).map(() => paras[i++] ?? '');
+        walk(s.subsections);
+      });
+      walk(sections);
+      this.set({ sections });
+    }
+    this.setState({ patch: null });
+  }
+
+  async send() {
+    const q = this.state.chatText.trim();
+    if (!q) return;
+    this.setState({ chatText: '', aiBusy: true,
+      chatLog: [...this.state.chatLog, { who: 'You', text: q, color: 'var(--color-neutral-700)' }] });
+    try {
+      const d = this.state.doc || {};
+      const text = await this.aiCall(`${q}
+
+Here is the manuscript metadata. Answer or make the change requested; if you are returning replacement text, return only that text.
+
+Title: ${d.title || ''}
+Abstract: ${d.abstract || ''}
+Keywords: ${(d.keywords || []).join('; ')}
+Sections: ${(d.sections || []).map(s => s.heading).join(' / ')}
+References:
+${(d.references || []).join('\n')}`);
+      this.setState({ aiBusy: false,
+        chatLog: [...this.state.chatLog, { who: PROVIDERS[this.state.provider].label, text, color: 'var(--color-accent-700)' }] });
+    } catch (e) {
+      this.setState({ aiBusy: false,
+        chatLog: [...this.state.chatLog, { who: 'Error', text: e.message, color: 'var(--color-accent)' }] });
+    }
+  }
+
+  countType(kind) {
+    const d = this.state.doc;
+    if (!d) return '—';
+    let n = 0;
+    const walk = (list) => (list || []).forEach(s => {
+      n += (s.items || []).filter(i => i.type === kind).length;
+      if (kind === 'paragraph') n += (s.paragraphs || []).length;
+      walk(s.subsections);
+    });
+    walk(d.sections);
+    return n || '—';
+  }
+
+  renderVals() {
+    const d = this.state.doc;
+    const words = (d?.abstract || '').trim().split(/\s+/).filter(Boolean).length;
+    const prov = PROVIDERS[this.state.provider];
+
+    return {
+      statusText: this.state.status,
+      statusDot: this.state.dot,
+      noDoc: !d,
+      fileName: this.state.fileName,
+      fileMeta: this.state.fileMeta,
+      warnings: this.state.warnings,
+      hasWarnings: this.state.warnings.length > 0,
+
+      mtype: d?.manuscript_type || 'Research Article',
+      title: d?.title || '',
+      abstract: d?.abstract || '',
+      abstractCount: d ? `${words} words` : '0 words',
+      abstractColor: words > 200 ? 'var(--color-accent-700)' : 'var(--color-neutral-600)',
+      keywords: (d?.keywords || []).join('; '),
+      jel: (d?.jel_codes || []).join(', '),
+
+      noAuthors: !!d && !(d.authors || []).length,
+      authorRows: (d?.authors || []).map((a, i) => ({
+        n: i + 1,
+        name: a.name || '', email: a.email || '', position: a.position || '',
+        organisation: a.organisation || '', country: a.country || '', orcid: a.orcid || '',
+        corresponding: !!a.corresponding,
+        onName: (e) => this.setAuthor(i, { name: e.target.value }),
+        onEmail: (e) => this.setAuthor(i, { email: e.target.value }),
+        onPosition: (e) => this.setAuthor(i, { position: e.target.value }),
+        onOrg: (e) => this.setAuthor(i, { organisation: e.target.value }),
+        onCountry: (e) => this.setAuthor(i, { country: e.target.value }),
+        onOrcid: (e) => this.setAuthor(i, { orcid: e.target.value }),
+        onCorr: (e) => this.setAuthor(i, { corresponding: e.target.checked }),
+        onRemove: () => this.set({ authors: d.authors.filter((_, n) => n !== i) }),
+      })),
+
+      noFigures: !(d?.figures || []).length,
+      figureRows: (d?.figures || []).map((f, i) => ({
+        label: f.label || '',
+        meta: `${f.name || 'image'} · ${f.width || '?'}×${f.height || '?'}`,
+        bg: `url("${this.figUrl(f)}")`,
+        onLabel: (e) => this.set({ figures: d.figures.map((x, n) => n === i ? { ...x, label: e.target.value } : x) }),
+        onRemove: () => this.set({ figures: d.figures.filter((_, n) => n !== i) }),
+      })),
+
+      backMatter: BACK_MATTER.map(([k, label], i) => ({
+        label, value: d?.[k] || '', open: i === 0,
+        onChange: (e) => this.set({ [k]: e.target.value }),
+      })),
+
+      stats: [
+        { n: (d?.sections || []).length || '—', label: 'Sections' },
+        { n: this.countType('paragraph'), label: 'Paragraphs' },
+        { n: this.countType('table'), label: 'Tables' },
+        { n: (d?.figures || []).length || '—', label: 'Figures' },
+        { n: (d?.references || []).length || '—', label: 'References' },
+      ],
+
+      previewNode: React.createElement('div', {
+        dangerouslySetInnerHTML: { __html: this.state.preview ||
+          '<p style="color:#8a8785;font-size:13px;text-align:left">The formatted paper appears here once a file is loaded.</p>' },
+      }),
+
+      providers: Object.entries(PROVIDERS).map(([id, p]) => ({
+        label: p.label,
+        bg: this.state.provider === id ? 'var(--color-accent)' : '#fff',
+        fg: this.state.provider === id ? '#fff' : 'var(--color-text)',
+        border: this.state.provider === id ? 'var(--color-accent)' : 'var(--color-neutral-400)',
+        onPick: () => this.setState({ provider: id, modelList: PROVIDERS[id].fallback, aiModel: PROVIDERS[id].fallback[0] || '' },
+          () => { this.saveAI(); this.refreshModels(); }),
+      })),
+      aiKey: this.state.aiKey,
+      keyHint: prov.key,
+      aiModel: this.state.aiModel,
+      modelList: this.state.modelList,
+      modelNote: this.state.modelNote,
+      remember: this.state.remember,
+      aiBusy: this.state.aiBusy,
+
+      chips: this.chipDefs().map(c => ({ label: c.label, onRun: () => this.runChip(c) })),
+      hasPatch: !!this.state.patch,
+      patchLabel: this.state.patch?.label || '',
+      patchPreview: (this.state.patch?.text || '').slice(0, 1200),
+      chatLog: this.state.chatLog,
+      noChat: this.state.chatLog.length === 0,
+      chatText: this.state.chatText,
+
+      fileRef: (el) => { this.fileEl = el; },
+      figRef: (el) => { this.figEl = el; },
+      onBrowse: () => this.fileEl?.click(),
+      onPick: (e) => this.load(e.target.files),
+      onAddFigures: () => this.figEl?.click(),
+      onFigPick: (e) => this.addFigures([...e.target.files]),
+      onDragOver: (e) => e.preventDefault(),
+      onDrop: (e) => { e.preventDefault(); this.load(e.dataTransfer.files); },
+      onReset: () => this.setState({ doc: null, preview: '', warnings: [], fileName: '', fileMeta: '', patch: null }),
+
+      onType: (e) => this.set({ manuscript_type: e.target.value }),
+      onTitle: (e) => this.set({ title: e.target.value }),
+      onAbstract: (e) => this.set({ abstract: e.target.value }),
+      onKeywords: (e) => this.set({ keywords: e.target.value.split(/[;,]/).map(s => s.trim()).filter(Boolean) }),
+      onJel: (e) => this.set({ jel_codes: e.target.value.split(/[,;]/).map(s => s.trim()).filter(Boolean) }),
+      onAddAuthor: () => this.set({ authors: [...(d?.authors || []), { name: '', email: '' }] }),
+
+      onKey: (e) => this.setState({ aiKey: e.target.value }, () => { this.modelCache = {}; this.saveAI(); this.refreshModels(); }),
+      onModel: (e) => this.setState({ aiModel: e.target.value }, () => this.saveAI()),
+      onReloadModels: () => { this.modelCache = {}; this.refreshModels(); },
+      onRemember: (e) => this.setState({ remember: e.target.checked }, () => this.saveAI()),
+      onApply: () => this.applyPatch(),
+      onDiscard: () => this.setState({ patch: null }),
+      onChatText: (e) => this.setState({ chatText: e.target.value }),
+      onChatKey: (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) this.send(); },
+      onSend: () => this.send(),
+      onClearChat: () => this.setState({ chatLog: [] }),
+
+      onDownload: async () => {
+        if (!this.state.doc) return;
+        this.setState({ status: 'Building .docx…', dot: 'var(--color-accent)' });
+        try {
+          const blob = await this.jfda.buildDocx(this.state.doc);
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = (this.state.doc.title || 'manuscript').slice(0, 60).replace(/[^\w\s-]/g, '').trim() + '.docx';
+          a.click();
+          URL.revokeObjectURL(a.href);
+          this.setState({ status: 'Downloaded', dot: 'var(--color-neutral-800)' });
+        } catch (e) {
+          this.setState({ status: 'Build failed: ' + e.message, dot: 'var(--color-accent)' });
+        }
+      },
+    };
+  }
+
+  setAuthor(i, patch) {
+    const authors = (this.state.doc.authors || []).map((a, n) => n === i ? { ...a, ...patch } : a);
+    this.set({ authors });
+  }
+
+  figUrl(f) {
+    this._urls = this._urls || new Map();
+    if (!this._urls.has(f)) this._urls.set(f, URL.createObjectURL(new Blob([f.data])));
+    return this._urls.get(f);
+  }
+}
+</script>
+</body>
+</html>
