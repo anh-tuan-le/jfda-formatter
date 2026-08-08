@@ -146,6 +146,7 @@ def _register_figures(figures, rels_text, ct_text):
         )
         rid_map[fig["id"]] = {
             "rid": rid,
+            "label": (fig.get("label") or "").strip(),
             "width_px": fig.get("width"),
             "height_px": fig.get("height"),
         }
@@ -168,20 +169,76 @@ def _register_figures(figures, rels_text, ct_text):
     return media, rels_text, ct_text, rid_map
 
 
+def _norm_label(text: str) -> str:
+    """'Figure 3.' / 'FIGURE 3' / 'Fig. 3' -> 'figure 3', so a caption in the
+    body and a label on an uploaded image compare equal."""
+    t = re.sub(r"[^a-z0-9]+", " ", str(text or "").lower()).strip()
+    t = re.sub(r"^fig\b\.?", "figure", t)
+    m = re.match(r"^figure\s*(\d+[a-z]?)", t)
+    return "figure " + m.group(1) if m else t
+
+
 def _attach_rids(items, rid_map):
+    """Bind each uploaded image to the figure callout it belongs to.
+
+    The body's figure items come from the parsed manuscript and carry a label
+    like 'Figure 3'; the images carry their own id and label. Match on the
+    normalised label first, then fall back to document order, then append
+    whatever is left so no uploaded figure is silently dropped.
+    """
     doc_pr = 1000
-    for item in items:
-        if item.get("type") != "figure":
-            continue
-        info = rid_map.get(item.get("id"))
-        if not info:
-            continue
+    fig_items = [i for i in items if i.get("type") == "figure"]
+    unused = dict(rid_map)
+
+    def bind(item, key):
+        nonlocal doc_pr
+        info = unused.pop(key)
         item["rid"] = info["rid"]
         item["width_px"] = info["width_px"]
         item["height_px"] = info["height_px"]
         item["doc_pr_id"] = doc_pr
         item.setdefault("skip_caption", False)
         doc_pr += 1
+
+    # 1. exact id
+    for item in fig_items:
+        if item.get("id") in unused:
+            bind(item, item["id"])
+
+    # 2. normalised label
+    by_label = {}
+    for key, info in unused.items():
+        lab = _norm_label(info.get("label"))
+        if lab:
+            by_label.setdefault(lab, key)
+    for item in fig_items:
+        if item.get("rid"):
+            continue
+        key = by_label.get(_norm_label(item.get("label") or item.get("caption")))
+        if key and key in unused:
+            bind(item, key)
+
+    # 3. document order for anything still unmatched
+    leftover = [k for k in rid_map if k in unused]
+    for item in fig_items:
+        if item.get("rid") or not leftover:
+            continue
+        bind(item, leftover.pop(0))
+
+    # 4. images with no callout at all — append them rather than lose them,
+    #    before the reference list so they stay inside the body.
+    if leftover:
+        at = next((n for n, i in enumerate(items)
+                   if i.get("type") == "reference"), len(items))
+        extra = []
+        for key in leftover:
+            info = unused[key]
+            item = {"type": "figure", "label": info.get("label") or "Figure",
+                    "caption": "", "id": key}
+            bind(item, key)
+            extra.append(item)
+        items[at:at] = extra
+    return items
 
 
 def format_manuscript_bytes(template_bytes: bytes, manuscript: dict) -> bytes:
@@ -213,7 +270,7 @@ def format_manuscript_bytes(template_bytes: bytes, manuscript: dict) -> bytes:
 
     # 3. Body
     items = manuscript_to_items(manuscript)
-    _attach_rids(items, rid_map)
+    items = _attach_rids(items, rid_map)
     doc_text = _splice_body(doc_text, build_body(items))
 
     # 4. Stale template relationships Word would reject

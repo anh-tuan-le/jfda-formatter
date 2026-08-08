@@ -1,10 +1,15 @@
 # Publishing the browser formatter
 
-Everything in this `site` folder is the finished website. It's already
-assembled — `index.html` is the formatter, `about.html` describes it, and the
-`web/` and `_ds/` folders are what they load.
+Everything in this folder is the finished website: `index.html` is the
+formatter, `about.html` describes it, and `web/` and `_ds/` are what they load.
 
-You need a GitHub account. Nothing else, no card, no hosting bill.
+Your GitHub account is **anh-tuan-le**, so the published address will be:
+
+```
+https://anh-tuan-le.github.io/jfda-formatter/
+```
+
+That is the link you send to editors. No card, no hosting bill.
 
 ---
 
@@ -15,7 +20,7 @@ Don't publish something you haven't seen working. The page loads files with
 you need a local server for one minute:
 
 ```powershell
-cd "C:\Users\letua\Downloads\site"
+cd "C:\Users\letua\Downloads\jfda-site"
 python -m http.server 8000
 ```
 
@@ -24,66 +29,61 @@ seconds on first load — it's downloading the Python runtime.
 
 Press Ctrl+C in PowerShell when you're done.
 
-If a manuscript comes out wrong, tell me what it did before publishing —
-fixing it now is easier than after editors have the link.
+If a manuscript comes out wrong, say so before publishing — fixing it now is
+easier than after editors have the link.
 
 ## Step 2 — create the repository
 
-On github.com → **New repository**.
+Go to **https://github.com/new**
 
-- Name: `jfda-formatter`
+- Owner: `anh-tuan-le`
+- Repository name: `jfda-formatter`
 - **Public** — Pages on a private repo needs a paid plan
 - Don't tick README, .gitignore or licence
 
 ## Step 3 — push the site
 
 ```powershell
-$site = "C:\Users\letua\Downloads\site"
-cd $site
+cd "C:\Users\letua\Downloads\jfda-site"
 
 git init
 git add .
-git commit -m "JFDA formatter"
+git commit -m "JFDA manuscript formatter"
 git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/jfda-formatter.git
+git remote add origin https://github.com/anh-tuan-le/jfda-formatter.git
 git push -u origin main
 ```
 
-Replace `YOUR-USERNAME`. A browser window will ask you to sign in — GitHub
-stopped accepting account passwords on the command line.
+A browser window will ask you to sign in — GitHub stopped accepting account
+passwords on the command line.
 
 If git isn't installed: `winget install Git.Git`, then reopen PowerShell.
 
 ## Step 4 — turn Pages on
 
-Repository → **Settings** → **Pages** in the left sidebar.
+Go to **https://github.com/anh-tuan-le/jfda-formatter/settings/pages**
 
 - Source: **Deploy from a branch**
 - Branch: **main**, folder: **/ (root)**
 - **Save**
 
-Wait two or three minutes, then reload that Settings page. Your URL appears at
-the top:
-
-```
-https://YOUR-USERNAME.github.io/jfda-formatter/
-```
-
-That's the link you send to editors.
+Wait two or three minutes, then reload that page. Your URL appears at the top.
 
 ## Step 5 — check the published version
 
-Open the URL in a private window (so you're not seeing a cached copy) and run
-one manuscript through. If the page loads but nothing happens when you drop a
-file, press F12 and look at the Console tab — a missing file shows up as a 404
-there and tells you exactly which one.
+Open **https://anh-tuan-le.github.io/jfda-formatter/** in a private window (so
+you're not seeing a cached copy) and run one manuscript through.
+
+If the page loads but nothing happens when you drop a file, press F12 and look
+at the Console tab — a missing file shows up as a 404 there and names exactly
+which one.
 
 ---
 
 ## Updating later
 
 ```powershell
-cd C:\Users\letua\Downloads\site
+cd "C:\Users\letua\Downloads\jfda-site"
 git add .
 git commit -m "what changed"
 git push
@@ -103,15 +103,33 @@ Docker version it's now literally true rather than a promise about deletion.
 **First load takes a few seconds.** It's fetching the Python runtime, about
 12 MB. After that it's cached and opens instantly.
 
-**AI features need their own API key.** Not yet wired into this build — the
-formatting, parsing and .docx export all work without one.
+**AI features need their own API key.** Each editor pastes their own key into
+the AI panel; it's stored in their browser and calls go straight to
+Anthropic/OpenAI/Google. You are not paying for their usage. Parsing,
+formatting and .docx export all work without a key.
 
 ---
 
-## Two things not yet carried over
+## Keeping this in step with your Docker version
 
-The AI panel and the citation tools from the Docker version aren't in this
-build yet. The Python for them is already here (`web/py/citation_converter.py`),
-so it's UI work rather than logic — say the word and I'll add the panel back.
+`web/py/` holds copies of the server's Python modules. After changing one in
+`jfda_app\app\`, copy it across:
 
-Your Docker version still runs locally and still has them.
+```powershell
+$src = "C:\Users\letua\Downloads\jfda_app\app"
+$dst = "C:\Users\letua\Downloads\jfda-site\web\py"
+
+Copy-Item "$src\docx_parser.py"        "$dst\"        -Force
+Copy-Item "$src\parser.py"             "$dst\"        -Force
+Copy-Item "$src\citation_converter.py" "$dst\"        -Force
+Copy-Item "$src\figure_fusion.py"      "$dst\"        -Force
+Copy-Item "$src\packer\builder.py"     "$dst\packer\" -Force
+```
+
+Two files must **never** be overwritten from the server copy, because they are
+the browser replacements: `pack_browser.py` and `bridge.py`.
+
+And `packer\metadata.py` in the browser copy has one addition —
+`apply_metadata_str()`, a string-in string-out version of `apply_metadata()`.
+If you re-copy that file from the server, re-add it or the build breaks. That's
+why it isn't in the list above.

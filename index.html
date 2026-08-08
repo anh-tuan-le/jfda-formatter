@@ -388,7 +388,7 @@ class Component extends DCLogic {
     } catch (e) { /* first run */ }
 
     try {
-      const mod = await import('./web/jfda-runtime.js');
+      const mod = await import('./web/jfda-runtime.js?v=2026-08-08-3');
       this.jfda = new mod.JFDA({ base: 'web/', onProgress: (t) => this.setState({ status: t || 'Ready' }) });
       await this.jfda.boot();
       this.setState({ status: 'Ready', dot: 'var(--color-neutral-800)' });

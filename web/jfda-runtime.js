@@ -10,6 +10,11 @@
      LibreOffice PDF preview   -> styled HTML from bridge.build_preview_html
 */
 
+// Bump on every change to the Python modules. Without it the browser and the
+// GitHub Pages CDN keep serving the previous copies after a push, so fixes
+// appear to have no effect.
+const BUILD = '2026-08-08-3';
+
 const PYODIDE_VERSION = '0.26.4';
 const PYODIDE_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
 const PDFJS_URL = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/';
@@ -63,7 +68,7 @@ export class JFDA {
     this.py.FS.mkdirTree('/jfda/packer');
     this.py.FS.mkdirTree('/jfda/office');
     await Promise.all(PY_FILES.map(async (name) => {
-      const r = await fetch(dir + name);
+      const r = await fetch(dir + name + '?v=' + BUILD);
       if (!r.ok) throw new Error(`missing ${dir}${name} (HTTP ${r.status})`);
       this.py.FS.writeFile('/jfda/' + name, await r.text());
     }));
@@ -71,7 +76,7 @@ export class JFDA {
     this.bridge = this.py.pyimport('bridge');
 
     this.onProgress('Loading template…');
-    const t = await fetch(this.base + 'template/template.docx');
+    const t = await fetch(this.base + 'template/template.docx?v=' + BUILD);
     if (!t.ok) throw new Error('template.docx not found');
     this.template = new Uint8Array(await t.arrayBuffer());
     if (this.template.length < 30000) {
