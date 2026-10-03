@@ -558,29 +558,36 @@ def manuscript_to_items(manuscript: dict) -> list:
     def spacer():
         items.append({"type": "spacer"})
 
+    def block(blk):
+        """Paragraphs with each table/figure/equation back in its original
+        position (`_at` = number of paragraphs that preceded it)."""
+        paras = blk.get("paragraphs", [])
+        content = blk.get("content", [])
+        for n, p in enumerate(paras):
+            items.extend(c for c in content if c.get("_at") == n)
+            items.append({"type": "paragraph", "text": p, "indent": True})
+        items.extend(c for c in content
+                     if not isinstance(c.get("_at"), int) or c["_at"] >= len(paras))
+
     # Sections and subsections
-    for sec in manuscript.get("sections", []):
+    def section(sec):
         items.append({"type": "heading", "text": sec["heading"]})
         spacer()
-        for p in sec.get("paragraphs", []):
-            items.append({"type": "paragraph", "text": p, "indent": True})
-        for content in sec.get("content", []):
-            items.append(content)
+        block(sec)
         for sub in sec.get("subsections", []):
             spacer()
             items.append({"type": "subheading", "text": sub["heading"]})
-            for p in sub.get("paragraphs", []):
-                items.append({"type": "paragraph", "text": p, "indent": True})
-            for content in sub.get("content", []):
-                items.append(content)
+            block(sub)
             for subsub in sub.get("subsections", []):
                 spacer()
                 items.append({"type": "subheading", "text": subsub["heading"]})
-                for p in subsub.get("paragraphs", []):
-                    items.append({"type": "paragraph", "text": p, "indent": True})
-                for content in subsub.get("content", []):
-                    items.append(content)
+                block(subsub)
         spacer()
+
+    secs = manuscript.get("sections", [])
+    for sec in secs:
+        if not sec.get("appendix"):
+            section(sec)
 
     # Back matter
     back = manuscript.get("back_matter") or {}
@@ -605,5 +612,12 @@ def manuscript_to_items(manuscript: dict) -> list:
         spacer()
         for r in refs:
             items.append({"type": "reference", "text": r})
+
+    # Appendices go after the references, as in the submission
+    apps = [s for s in secs if s.get("appendix")]
+    if apps:
+        spacer()
+        for sec in apps:
+            section(sec)
 
     return items

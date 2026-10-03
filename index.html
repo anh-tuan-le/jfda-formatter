@@ -304,26 +304,35 @@
           </div>
         </sc-if>
 
-        <sc-if value="{{ hasPatch }}" hint-placeholder-val="{{ false }}">
-          <div style="border:2px solid var(--color-accent);background:#fff;padding:12px;margin-bottom:16px">
-            <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:8px;font-family:var(--font-heading);font-weight:700">{{ patchLabel }}</div>
-            <div style="font-size:12px;line-height:1.55;max-height:220px;overflow:auto;white-space:pre-wrap;margin-bottom:12px">{{ patchPreview }}</div>
-            <div style="display:flex;gap:6px">
-              <button type="button" onClick="{{ onApply }}" style="font-family:var(--font-heading);font-weight:700;font-size:13px;padding:8px 14px;background:var(--color-accent);color:#fff;border:2px solid var(--color-accent);cursor:pointer">Apply</button>
-              <button type="button" onClick="{{ onDiscard }}" style="font-family:var(--font-heading);font-weight:700;font-size:13px;padding:8px 14px;background:transparent;border:2px solid var(--color-neutral-300);cursor:pointer">Discard</button>
-            </div>
-          </div>
-        </sc-if>
-
         <div style="border:1px solid var(--color-neutral-300);background:#fff;margin-bottom:12px">
-          <div style="max-height:260px;overflow-y:auto;padding:12px">
+          <div style="max-height:480px;overflow-y:auto;padding:12px">
             <sc-if value="{{ noChat }}" hint-placeholder-val="{{ true }}">
-              <p style="font-size:12px;line-height:1.6;color:var(--color-neutral-600);margin:0">Ask for changes in plain language — &ldquo;reformat every reference to APA 7&rdquo;, &ldquo;make section 3 more concise&rdquo;, &ldquo;fix the author affiliations&rdquo;. Changes arrive as a patch you approve.</p>
+              <p style="font-size:12px;line-height:1.6;color:var(--color-neutral-600);margin:0">Ask for changes in plain language — &ldquo;reformat every reference to APA 7&rdquo;, &ldquo;make section 3 more concise&rdquo;, &ldquo;fix the author affiliations&rdquo;. The assistant edits the manuscript directly. Every change is listed with its before and after text and can be undone.</p>
             </sc-if>
             <sc-for list="{{ chatLog }}" as="c" hint-placeholder-count="0">
-              <div style="margin-bottom:12px">
+              <div style="margin-bottom:14px">
                 <div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:{{ c.color }};margin-bottom:3px;font-family:var(--font-heading);font-weight:700">{{ c.who }}</div>
                 <div style="font-size:12.5px;line-height:1.55;white-space:pre-wrap">{{ c.text }}</div>
+                <sc-if value="{{ c.hasChanges }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:8px;border:2px solid var(--color-divider)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:var(--color-neutral-100);border-bottom:1px solid var(--color-neutral-300)">
+                      <span style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-heading);font-weight:700">{{ c.changeTitle }}</span>
+                      <button type="button" onClick="{{ c.onUndo }}" style="font-family:var(--font-heading);font-weight:700;font-size:11px;padding:3px 10px;background:#fff;border:1px solid var(--color-neutral-400);cursor:pointer" style-hover="background:var(--color-accent-100)">{{ c.undoLabel }}</button>
+                    </div>
+                    <sc-for list="{{ c.changes }}" as="ch" hint-placeholder-count="1">
+                      <div style="padding:8px 10px;border-bottom:1px solid var(--color-neutral-200)">
+                        <div style="font-size:11.5px;font-weight:700;font-family:var(--font-heading)">{{ ch.n }}. {{ ch.label }}</div>
+                        <div style="font-size:11.5px;line-height:1.45;color:var(--color-neutral-700);margin:2px 0 6px">{{ ch.reason }}</div>
+                        <div style="display:grid;grid-template-columns:44px minmax(0,1fr);gap:6px 8px;align-items:start">
+                          <span style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-neutral-600);padding-top:2px">Before</span>
+                          <div style="font-size:12px;line-height:1.5;white-space:pre-wrap;max-height:160px;overflow:auto;border-left:2px solid var(--color-neutral-300);padding-left:8px"><sc-for list="{{ ch.before }}" as="s" hint-placeholder-count="0"><span style="background:{{ s.bg }};text-decoration:{{ s.dec }};color:{{ s.fg }}">{{ s.t }}</span></sc-for></div>
+                          <span style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-accent-700);padding-top:2px">After</span>
+                          <div style="font-size:12px;line-height:1.5;white-space:pre-wrap;max-height:160px;overflow:auto;border-left:2px solid var(--color-accent);padding-left:8px"><sc-for list="{{ ch.after }}" as="s" hint-placeholder-count="0"><span style="background:{{ s.bg }};text-decoration:{{ s.dec }};color:{{ s.fg }}">{{ s.t }}</span></sc-for></div>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
               </div>
             </sc-for>
           </div>
@@ -332,6 +341,7 @@
             <div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
               <button type="button" onClick="{{ onSend }}" disabled="{{ aiBusy }}" style="font-family:var(--font-heading);font-weight:700;font-size:13px;padding:8px 14px;background:var(--color-accent);color:#fff;border:2px solid var(--color-accent);cursor:pointer">Send</button>
               <button type="button" onClick="{{ onClearChat }}" style="font-family:var(--font-heading);font-weight:700;font-size:13px;padding:8px 14px;background:transparent;border:2px solid var(--color-neutral-300);cursor:pointer">Clear</button>
+              <button type="button" onClick="{{ onExportLog }}" disabled="{{ noChangeLog }}" title="Download every applied change as a text report" style="font-family:var(--font-heading);font-weight:700;font-size:13px;padding:8px 14px;background:transparent;border:2px solid var(--color-neutral-300);cursor:pointer;margin-left:auto">Export change log</button>
             </div>
           </div>
         </div>
@@ -391,7 +401,7 @@ class Component extends DCLogic {
     preview: '', warnings: [],
     provider: 'anthropic', aiKey: '', aiModel: 'claude-opus-5-5', remember: true, autoLatest: true,
     modelList: PROVIDERS.anthropic.fallback, modelNote: 'Default list — enter a key to load your account\u2019s models',
-    aiBusy: false, chatLog: [], chatText: '', patch: null,
+    aiBusy: false, chatLog: [], chatText: '',
     aiTask: '', aiStage: '', aiSeconds: 0, aiChars: 0,
   };
   modelCache = {};
@@ -425,7 +435,11 @@ class Component extends DCLogic {
   async componentDidMount() {
     try {
       const s = JSON.parse(localStorage.getItem('jfda.ai') || '{}');
-      if (s.provider) this.setState({ provider: s.provider });
+      if (s.provider && PROVIDERS[s.provider]) {
+        const fb = PROVIDERS[s.provider].fallback;
+        const list = s.model && !fb.includes(s.model) ? [s.model, ...fb] : fb;
+        this.setState({ provider: s.provider, modelList: list, aiModel: s.model || fb[0] || '' });
+      }
       if (s.key) this.setState({ aiKey: s.key });
       if (s.model) this.setState({ aiModel: s.model });
       if (s.remember === false) this.setState({ remember: false });
@@ -700,7 +714,6 @@ References: ${(d().references || []).length}` },
 
   async runChip(chip) {
     const prompt = chip.prompt();
-    // Bigger inputs genuinely take longer; scale the expectation with them.
     const expected = Math.min(90, 8 + Math.round(prompt.length / 400));
     this.activeChip = chip.id;
     this.startTask(chip.label, expected);
@@ -711,13 +724,9 @@ References: ${(d().references || []).length}` },
       const secs = ((Date.now() - t0) / 1000).toFixed(1);
       this.activeChip = null;
       this.endTask();
-      this.setState({
-        patch: { field: chip.field, label: chip.label, text },
-        status: 'Ready', dot: 'var(--color-neutral-800)',
-        chatLog: [...this.state.chatLog, {
-          who: `${chip.label} · ${secs}s · ${text.length} chars`,
-          text, color: 'var(--color-accent-700)' }],
-      });
+      const { edits, reply } = this.chipEdits(chip, text);
+      this.setState({ status: 'Ready', dot: 'var(--color-neutral-800)' });
+      this.commit(edits, chip.label + ' · ' + secs + 's', reply, chip.label);
     } catch (e) {
       this.activeChip = null;
       this.endTask();
@@ -726,60 +735,283 @@ References: ${(d().references || []).length}` },
     }
   }
 
-  applyPatch() {
-    const p = this.state.patch;
-    if (!p) return;
-    const t = p.text;
-
-    if (p.field === 'title') this.set({ title: t.replace(/^["']|["']$/g, '') });
-    else if (p.field === 'abstract') this.set({ abstract: t });
-    else if (p.field === 'references') this.set({ references: t.split('\n').map(s => s.trim()).filter(Boolean) });
-    else if (p.field === 'keywords_jel') {
-      const kw = (t.match(/KEYWORDS:\s*(.+)/i) || [])[1];
-      const jel = (t.match(/JEL:\s*(.+)/i) || [])[1];
-      const patch = {};
-      if (kw) patch.keywords = kw.split(/[;,]/).map(s => s.trim()).filter(Boolean);
-      if (jel) patch.jel_codes = jel.split(/[,;]/).map(s => s.trim()).filter(Boolean);
-      this.set(patch);
-    } else if (p.field === 'backmatter') {
-      const grab = (k) => (t.match(new RegExp(k + ':\\s*(.+)', 'i')) || [])[1] || '';
-      this.set({ data_availability: grab('DATA'), funding: grab('FUNDING'),
-                 acknowledgements: grab('ACK'), gen_ai: grab('GENAI'), conflicts: grab('CONFLICTS') });
-    } else if (p.field === 'sections') {
-      const paras = t.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
-      const sections = JSON.parse(JSON.stringify(this.state.doc.sections || []));
-      let i = 0;
-      const walk = (list) => (list || []).forEach(s => {
-        s.paragraphs = (s.paragraphs || []).map(() => paras[i++] ?? '');
-        walk(s.subsections);
-      });
-      walk(sections);
-      this.set({ sections });
+  /* Turn a one-shot chip answer into the same edit list the chat produces. */
+  chipEdits(chip, text) {
+    const t = text.trim();
+    const lines = (s) => s.split('\n').map(x => x.trim()).filter(Boolean);
+    switch (chip.field) {
+      case 'title':
+        return { reply: 'Title tightened.', edits: [{ target: 'title', after: t.replace(/^["'“]|["'”]$/g, ''), reason: 'Shortened; every substantive term kept.' }] };
+      case 'abstract':
+        return { reply: 'Abstract polished.', edits: [{ target: 'abstract', after: t, reason: 'One paragraph, at most 200 words; findings and hedging unchanged.' }] };
+      case 'references':
+        return { reply: 'Reference list reformatted.', edits: [{ target: 'references', after: lines(t), reason: 'Reformatted to APA 7th edition and sorted by first author.' }] };
+      case 'keywords_jel': {
+        const kw = (t.match(/KEYWORDS:\s*(.+)/i) || [])[1];
+        const jel = (t.match(/JEL:\s*(.+)/i) || [])[1];
+        const edits = [];
+        if (kw) edits.push({ target: 'keywords', after: kw.split(/[;,]/), reason: 'Suggested from the abstract.' });
+        if (jel) edits.push({ target: 'jel_codes', after: jel.split(/[,;]/), reason: 'Suggested from the abstract.' });
+        return { reply: 'Keywords and JEL codes suggested.', edits };
+      }
+      case 'backmatter': {
+        const grab = (k) => (t.match(new RegExp(k + ':\\s*(.+)', 'i')) || [])[1] || '';
+        const why = 'Drafted standard statement. Check it is accurate before submission.';
+        return { reply: 'Back matter drafted.', edits: [
+          ['DATA', 'data_availability'], ['FUNDING', 'funding'], ['ACK', 'acknowledgements'],
+          ['GENAI', 'gen_ai'], ['CONFLICTS', 'conflicts']].map(([k, f]) => ({ target: f, after: grab(k), reason: why })) };
+      }
+      case 'sections': {
+        const paras = t.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+        const idx = this.paraIndex(this.state.doc).filter(x => x.type === 'p');
+        if (paras.length !== idx.length)
+          return { reply: 'The model returned ' + paras.length + ' paragraphs for ' + idx.length + ' in the manuscript, so nothing was changed. Try again, or ask in chat for specific sections.', edits: [] };
+        return { reply: 'In-text citations checked against the reference list.',
+          edits: idx.map((p, i) => ({ target: p.id, after: paras[i], reason: 'In-text citation aligned with the reference list (APA 7 author-date).' })) };
+      }
+      default:
+        return { reply: t, edits: [] };
     }
-    this.setState({ patch: null });
+  }
+
+  /* ---------------- edit engine ---------------- */
+
+  paraIndex(doc) {
+    const out = [];
+    const walk = (list, prefix) => (list || []).forEach((s, i) => {
+      const path = [...prefix, i + 1];
+      const id = path.join('.');
+      out.push({ type: 'h', id: id + '.h', text: s.heading || '' });
+      (s.paragraphs || []).forEach((p, k) => out.push({ type: 'p', id: id + '.p' + (k + 1), text: p }));
+      walk(s.subsections, path);
+    });
+    walk((doc || {}).sections, []);
+    return out;
+  }
+
+  manuscriptDump(doc) {
+    const d = doc || {};
+    const out = [
+      '[title] ' + (d.title || ''),
+      '[abstract] ' + (d.abstract || ''),
+      '[keywords] ' + (d.keywords || []).join('; '),
+      '[jel_codes] ' + (d.jel_codes || []).join(', '),
+    ];
+    (d.authors || []).forEach((a, i) => out.push('[author ' + (i + 1) + '] ' +
+      ['name', 'affiliation', 'position', 'email', 'orcid'].map(k => k + '=' + (a[k] || '')).join(' | ')));
+    out.push('', 'BODY');
+    this.paraIndex(d).forEach(x => out.push('[' + x.id + '] ' + x.text));
+    out.push('', 'REFERENCES');
+    (d.references || []).forEach((r, i) => out.push('[ref ' + (i + 1) + '] ' + r));
+    out.push('', 'BACK MATTER');
+    BACK_MATTER.forEach(([k]) => out.push('[' + k + '] ' + (d[k] || '')));
+    return out.join('\n');
+  }
+
+  resolve(target) {
+    const t = String(target || '').trim();
+    let m;
+    if (['title', 'abstract', ...BACK_MATTER.map(b => b[0])].includes(t)) return { kind: 'field', key: t };
+    if (['keywords', 'jel_codes', 'references'].includes(t)) return { kind: 'list', key: t };
+    if ((m = t.match(/^ref(?:erence)?\s*#?(\d+)$/i))) return { kind: 'ref', i: +m[1] - 1 };
+    if ((m = t.match(/^author\s*(\d+)\.(name|affiliation|position|email|orcid)$/i))) return { kind: 'author', i: +m[1] - 1, key: m[2].toLowerCase() };
+    if ((m = t.match(/^(\d+(?:\.\d+)*)\.p(\d+)$/i))) return { kind: 'para', path: m[1].split('.').map(n => +n - 1), k: +m[2] - 1, id: m[1] };
+    if ((m = t.match(/^(\d+(?:\.\d+)*)\.h$/i))) return { kind: 'head', path: m[1].split('.').map(n => +n - 1), id: m[1] };
+    return null;
+  }
+
+  secAt(sections, path) {
+    let list = sections, s = null;
+    for (const i of path) { s = (list || [])[i]; if (!s) return null; list = s.subsections; }
+    return s;
+  }
+
+  getVal(doc, r) {
+    if (r.kind === 'field') return doc[r.key] || '';
+    if (r.kind === 'list') return (doc[r.key] || []).slice();
+    if (r.kind === 'ref') return (doc.references || [])[r.i];
+    if (r.kind === 'author') { const a = (doc.authors || [])[r.i]; return a ? (a[r.key] || '') : undefined; }
+    const s = this.secAt(doc.sections, r.path);
+    if (!s) return undefined;
+    return r.kind === 'head' ? s.heading : (s.paragraphs || [])[r.k];
+  }
+
+  setVal(doc, r, v) {
+    if (r.kind === 'field' || r.kind === 'list') doc[r.key] = v;
+    else if (r.kind === 'ref') doc.references[r.i] = v;
+    else if (r.kind === 'author') doc.authors[r.i][r.key] = v;
+    else {
+      const s = this.secAt(doc.sections, r.path);
+      if (r.kind === 'head') s.heading = v; else s.paragraphs[r.k] = v;
+    }
+  }
+
+  normAfter(r, v) {
+    if (r.kind === 'list') {
+      const arr = Array.isArray(v) ? v : String(v || '').split(r.key === 'references' ? /\n+/ : /[;,]/);
+      return arr.map(x => String(x).trim()).filter(Boolean);
+    }
+    return Array.isArray(v) ? v.join('\n') : String(v ?? '').trim();
+  }
+
+  toText(v) { return Array.isArray(v) ? v.join('\n') : String(v ?? ''); }
+
+  labelFor(r, doc) {
+    const names = { title: 'Title', abstract: 'Abstract', keywords: 'Keywords', jel_codes: 'JEL codes', references: 'Reference list' };
+    BACK_MATTER.forEach(([k, l]) => { names[k] = l; });
+    if (r.kind === 'field' || r.kind === 'list') return names[r.key];
+    if (r.kind === 'ref') return 'Reference ' + (r.i + 1);
+    if (r.kind === 'author') return 'Author ' + (r.i + 1) + ' — ' + r.key;
+    const s = this.secAt(doc.sections, r.path);
+    const head = s && s.heading ? ' (' + (s.heading.length > 40 ? s.heading.slice(0, 40) + '…' : s.heading) + ')' : '';
+    return r.kind === 'head' ? 'Section ' + r.id + ' heading' : 'Section ' + r.id + head + ', paragraph ' + (r.k + 1);
+  }
+
+  /* Word-level diff: deletions marked in Before, insertions in After. */
+  diff(a, b) {
+    const A = a.split(/(\s+)/).filter(x => x !== ''), B = b.split(/(\s+)/).filter(x => x !== '');
+    const same = { bg: 'transparent', dec: 'none', fg: 'inherit' };
+    const del = { bg: 'var(--color-accent-100)', dec: 'line-through', fg: 'var(--color-accent-800)' };
+    const ins = { bg: 'var(--color-accent-100)', dec: 'none', fg: 'var(--color-accent-900)' };
+    const empty = [{ t: '(empty)', bg: 'transparent', dec: 'none', fg: 'var(--color-neutral-500)' }];
+    if (!A.length) return { before: empty, after: B.length ? [{ t: b, ...ins }] : empty };
+    if (!B.length) return { before: [{ t: a, ...del }], after: empty };
+    const n = A.length, m = B.length;
+    if (n * m > 3e6) return { before: [{ t: a, ...del }], after: [{ t: b, ...ins }] };
+    const L = new Uint32Array((n + 1) * (m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+      L[i * (m + 1) + j] = A[i] === B[j] ? L[(i + 1) * (m + 1) + j + 1] + 1 : Math.max(L[(i + 1) * (m + 1) + j], L[i * (m + 1) + j + 1]);
+    const before = [], after = [];
+    const push = (arr, t, st) => {
+      const last = arr[arr.length - 1];
+      if (last && last.bg === st.bg && last.dec === st.dec && last.fg === st.fg) last.t += t; else arr.push({ t, ...st });
+    };
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (A[i] === B[j]) { push(before, A[i], same); push(after, B[j], same); i++; j++; }
+      else if (L[(i + 1) * (m + 1) + j] >= L[i * (m + 1) + j + 1]) { push(before, A[i], /^\s+$/.test(A[i]) ? same : del); i++; }
+      else { push(after, B[j], /^\s+$/.test(B[j]) ? same : ins); j++; }
+    }
+    while (i < n) { push(before, A[i], /^\s+$/.test(A[i]) ? same : del); i++; }
+    while (j < m) { push(after, B[j], /^\s+$/.test(B[j]) ? same : ins); j++; }
+    return { before, after };
+  }
+
+  commit(edits, who, reply, request) {
+    const has = !!this.state.doc;
+    const doc = JSON.parse(JSON.stringify(this.state.doc || {}));
+    const changes = [];
+    let skipped = 0;
+    for (const e of (has ? edits || [] : [])) {
+      const r = this.resolve(e.target);
+      if (!r) { skipped++; continue; }
+      const before = this.getVal(doc, r);
+      if (before === undefined) { skipped++; continue; }
+      const after = this.normAfter(r, e.after);
+      const bt = this.toText(before), at = this.toText(after);
+      if (bt === at) continue;
+      const label = this.labelFor(r, doc);
+      this.setVal(doc, r, after);
+      const dd = this.diff(bt, at);
+      changes.push({ r, before, after, bt, at, label, reason: String(e.reason || '').trim(), segB: dd.before, segA: dd.after });
+    }
+    let text = reply || (changes.length ? '' : 'No changes were needed.');
+    if (skipped) text += (text ? '\n' : '') + skipped + ' suggested edit' + (skipped > 1 ? 's' : '') + ' pointed at text that does not exist and ' + (skipped > 1 ? 'were' : 'was') + ' skipped.';
+    const entry = { id: ++this.seq, who, text, request, color: 'var(--color-accent-700)', changes, undone: false, at: new Date() };
+    this.setState({ ...(changes.length ? { doc } : {}), chatLog: [...this.state.chatLog, entry] },
+      () => { if (changes.length) this.refreshPreview(); });
+  }
+  seq = 0;
+
+  toggleUndo(id) {
+    const entry = this.state.chatLog.find(c => c.id === id);
+    if (!entry || !this.state.doc) return;
+    const doc = JSON.parse(JSON.stringify(this.state.doc));
+    const list = entry.undone ? entry.changes : entry.changes.slice().reverse();
+    for (const c of list) { try { this.setVal(doc, c.r, JSON.parse(JSON.stringify(entry.undone ? c.after : c.before))); } catch (e) { /* target gone */ } }
+    this.setState({ doc, chatLog: this.state.chatLog.map(c => c.id === id ? { ...c, undone: !c.undone } : c) },
+      () => this.refreshPreview());
+  }
+
+  exportLog() {
+    const rows = this.state.chatLog.filter(c => c.changes && c.changes.length);
+    const fmt = (d) => d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    const out = [
+      'JFDA Manuscript Formatter — AI change log',
+      'Manuscript: ' + (this.state.fileName || 'untitled'),
+      'Model: ' + this.state.aiModel,
+      'Exported: ' + fmt(new Date()),
+      'Change sets: ' + rows.length + ' (' + rows.reduce((n, c) => n + (c.undone ? 0 : c.changes.length), 0) + ' changes in effect)',
+      '',
+    ];
+    rows.forEach((c, i) => {
+      out.push('='.repeat(72));
+      out.push((i + 1) + '. ' + c.who + ' — ' + fmt(c.at) + (c.undone ? '  [UNDONE]' : ''));
+      if (c.request) out.push('Request: ' + c.request);
+      if (c.text) out.push('Summary: ' + c.text);
+      c.changes.forEach((ch, k) => {
+        out.push('', '  ' + (i + 1) + '.' + (k + 1) + '  ' + ch.label);
+        if (ch.reason) out.push('        Reason: ' + ch.reason);
+        out.push('        Before: ' + (ch.bt || '(empty)').replace(/\n/g, '\n                '));
+        out.push('        After:  ' + (ch.at || '(empty)').replace(/\n/g, '\n                '));
+      });
+      out.push('');
+    });
+    const blob = new Blob([out.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (this.state.fileName || 'manuscript').replace(/\.[^.]+$/, '') + ' — change log.txt';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  parseEditJSON(text) {
+    const s = text.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, '');
+    const a = s.indexOf('{'), b = s.lastIndexOf('}');
+    if (a < 0 || b <= a) return { reply: text.trim(), edits: [] };
+    try {
+      const j = JSON.parse(s.slice(a, b + 1));
+      return { reply: String(j.reply || '').trim(), edits: Array.isArray(j.edits) ? j.edits : [] };
+    } catch (e) { return { reply: text.trim(), edits: [] }; }
   }
 
   async send() {
     const q = this.state.chatText.trim();
     if (!q) return;
-    this.startTask('Chat', 20);
+    const history = this.state.chatLog.slice(-8)
+      .filter(c => c.who !== 'Error')
+      .map(c => (c.who === 'You' ? 'User: ' : 'Assistant: ') + String(c.text || '').slice(0, 600)).join('\n');
+    this.startTask('Editing', 25);
     this.setState({ chatText: '',
       chatLog: [...this.state.chatLog, { who: 'You', text: q, color: 'var(--color-neutral-700)' }] });
+    const t0 = Date.now();
     try {
-      const d = this.state.doc || {};
-      const text = await this.aiCall(`${q}
+      const raw = await this.aiCall(`You are editing a manuscript inside a journal formatting tool. Carry out the user's instruction by editing the manuscript directly, the way a copy editor would in tracked changes.
 
-Here is the manuscript metadata. Answer or make the change requested; if you are returning replacement text, return only that text.
+Return ONLY a JSON object, no markdown fences:
+{"reply": "one or two plain sentences: what you changed, or the answer if the user only asked a question",
+ "edits": [{"target": "<id>", "after": <new value>, "reason": "<short reason, one clause>"}]}
 
-Title: ${d.title || ''}
-Abstract: ${d.abstract || ''}
-Keywords: ${(d.keywords || []).join('; ')}
-Sections: ${(d.sections || []).map(s => s.heading).join(' / ')}
-References:
-${(d.references || []).join('\n')}`);
+Valid targets (ids appear in square brackets in the manuscript below):
+- "title", "abstract", "data_availability", "funding", "acknowledgements", "gen_ai", "conflicts": after is a string
+- "keywords", "jel_codes": after is an array of strings
+- "references": after is the full array of reference strings (only when reordering or replacing the whole list)
+- "ref N": one reference, after is the full new string
+- "S.pK" such as "2.1.p3": one body paragraph, after is the complete new paragraph
+- "S.h" such as "2.1.h": a section heading
+- "author N.field" with field one of name, affiliation, position, email, orcid
+
+Rules: include only targets whose text actually changes; always give the complete replacement text, never a fragment or a diff; keep every unchanged word exactly as it is; never invent citations, data, statistics, DOIs or sources; if the instruction is a question or needs information you do not have, return "edits": [] and say so in reply.
+${history ? "\nCONVERSATION SO FAR\n" + history + "\n" : ""}
+INSTRUCTION
+${q}
+
+MANUSCRIPT
+${this.manuscriptDump(this.state.doc)}`);
+      const secs = ((Date.now() - t0) / 1000).toFixed(1);
       this.endTask();
-      this.setState({
-        chatLog: [...this.state.chatLog, { who: PROVIDERS[this.state.provider].label, text, color: 'var(--color-accent-700)' }] });
+      const { reply, edits } = this.parseEditJSON(raw);
+      this.commit(edits, PROVIDERS[this.state.provider].label + ' · ' + secs + 's', reply, q);
     } catch (e) {
       this.endTask();
       this.setState({
@@ -792,7 +1024,7 @@ ${(d.references || []).join('\n')}`);
     if (!d) return '—';
     let n = 0;
     const walk = (list) => (list || []).forEach(s => {
-      n += (s.items || []).filter(i => i.type === kind).length;
+      n += (s.content || s.items || []).filter(i => i.type === kind).length;
       if (kind === 'paragraph') n += (s.paragraphs || []).length;
       walk(s.subsections);
     });
@@ -897,10 +1129,17 @@ ${(d.references || []).join('\n')}`);
       aiStage: this.state.aiStage,
       aiElapsed: this.state.aiSeconds + 's',
       aiBarWidth: Math.min(92, Math.round((this.state.aiSeconds / (this.taskExpected || 20)) * 92)) + '%',
-      hasPatch: !!this.state.patch,
-      patchLabel: this.state.patch?.label || '',
-      patchPreview: (this.state.patch?.text || '').slice(0, 1200),
-      chatLog: this.state.chatLog,
+      chatLog: this.state.chatLog.map(c => {
+        const n = (c.changes || []).length;
+        return { ...c,
+          hasChanges: n > 0,
+          changeTitle: n + ' change' + (n > 1 ? 's' : '') + (c.undone ? ' undone' : ' applied'),
+          undoLabel: c.undone ? 'Redo' : 'Undo',
+          onUndo: () => this.toggleUndo(c.id),
+          changes: (c.changes || []).map((ch, i) => ({ n: i + 1, label: ch.label, reason: ch.reason || '—', before: ch.segB, after: ch.segA })),
+        };
+      }),
+      noChangeLog: !this.state.chatLog.some(c => c.changes && c.changes.length),
       noChat: this.state.chatLog.length === 0,
       chatText: this.state.chatText,
 
@@ -912,7 +1151,7 @@ ${(d.references || []).join('\n')}`);
       onFigPick: (e) => this.addFigures([...e.target.files]),
       onDragOver: (e) => e.preventDefault(),
       onDrop: (e) => { e.preventDefault(); this.load(e.dataTransfer.files); },
-      onReset: () => this.setState({ doc: null, preview: '', warnings: [], fileName: '', fileMeta: '', patch: null }),
+      onReset: () => this.setState({ doc: null, preview: '', warnings: [], fileName: '', fileMeta: '', chatLog: [] }),
 
       onType: (e) => this.set({ manuscript_type: e.target.value }),
       onTitle: (e) => this.set({ title: e.target.value }),
@@ -926,12 +1165,11 @@ ${(d.references || []).join('\n')}`);
       onReloadModels: () => { this.modelCache = {}; this.refreshModels(); },
       onRemember: (e) => this.setState({ remember: e.target.checked }, () => this.saveAI()),
       onAutoLatest: (e) => this.setState({ autoLatest: e.target.checked }, () => { this.saveAI(); this.modelCache = {}; this.refreshModels(); }),
-      onApply: () => this.applyPatch(),
-      onDiscard: () => this.setState({ patch: null }),
       onChatText: (e) => this.setState({ chatText: e.target.value }),
       onChatKey: (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) this.send(); },
       onSend: () => this.send(),
       onClearChat: () => this.setState({ chatLog: [] }),
+      onExportLog: () => this.exportLog(),
 
       onDownload: async () => {
         if (!this.state.doc) return;

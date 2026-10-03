@@ -399,7 +399,17 @@ FIGURE_PLACEHOLDER_RE = re.compile(
 )
 
 # Detect table captions: "Table 1. Caption", "Table 1 — Caption", "Table 1: Caption"
-TABLE_CAPTION_RE = re.compile(r'^Table\s+(\d+)\s*[.\u2014\u2013\-:]\s*(.*)$', re.IGNORECASE)
+TABLE_CAPTION_RE = re.compile(r'^Table\s+([A-Z]?\d+)\s*[.\u2014\u2013\-:]\s*(.*)$', re.IGNORECASE)
+
+# "Appendix", "Appendix A", "Appendix B. Robustness tables", "Appendices"
+APPENDIX_RE = re.compile(r'^appendi(?:x|ces)\b(?:\s+[A-Z0-9]{1,3}\b)?', re.IGNORECASE)
+
+
+def _add_content(target: dict, item: dict) -> None:
+    """Attach a table/figure/equation and remember which paragraph it follows,
+    so the builder can put it back where the author placed it."""
+    item['_at'] = len(target.get('paragraphs') or [])
+    target.setdefault('content', []).append(item)
 
 # Front-matter labels that are never a title and never a body section.
 FRONT_LABELS = {
@@ -529,6 +539,7 @@ def _autonumber_sections(out: dict) -> None:
         return
     if any(re.match(r'^(\d+[.)]|[IVXLC]+\.)\s', s.get('heading', '')) for s in secs):
         return
+    secs = [s for s in secs if not s.get('appendix')]
     for n, sec in enumerate(secs, 1):
         sec['heading'] = f"{n}. {sec['heading']}"
         for m, sub in enumerate(sec.get('subsections') or [], 1):
@@ -1002,7 +1013,7 @@ def _extract_body(paras: list[dict], out: dict) -> None:
                 if pending_table_caption:
                     label, title = pending_table_caption
                     pending_table_caption = None
-                target.setdefault('content', []).append({
+                _add_content(target, {
                     'type': 'table',
                     'caption_label': label,
                     'caption_title': title,
@@ -1117,6 +1128,17 @@ def _extract_body(paras: list[dict], out: dict) -> None:
             i += 1
             continue
 
+        # Appendix heading. Appendices usually follow the reference list, so
+        # without this their tables are swallowed as reference entries.
+        if (APPENDIX_RE.match(text) and len(text) < 120
+                and (p['bold'] or p.get('style_level') is not None)):
+            current_target = 'section'
+            current_root = {'heading': text, 'paragraphs': [], 'subsections': [], 'content': [], 'appendix': True}
+            current_sub = current_subsub = None
+            sections.append(current_root)
+            i += 1
+            continue
+
         # Check for back-matter heading (non-numbered).
         # These may or may not be bold depending on the manuscript.
         bm_key_text = text.lower().rstrip('.:').strip()
@@ -1167,7 +1189,7 @@ def _extract_body(paras: list[dict], out: dict) -> None:
                     i += 1
             target = current_subsub or current_sub or current_root
             if target is not None and current_target == 'section':
-                target.setdefault('content', []).append({
+                _add_content(target, {
                     'type': 'figure',
                     'label': f'Figure {fig_idx}{fig_sub}',
                     'caption': fig_caption,
@@ -1222,7 +1244,7 @@ def _extract_body(paras: list[dict], out: dict) -> None:
                 is_standalone_eq = p.get('has_math') and p.get('raw_math_xml') and \
                     'oMathPara' in (p.get('raw_math_xml') or '')
                 if is_standalone_eq:
-                    target.setdefault('content', []).append({
+                    _add_content(target, {
                         'type': 'equation',
                         'text': text,
                         'raw_math_xml': p['raw_math_xml'],

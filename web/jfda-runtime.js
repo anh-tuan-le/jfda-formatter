@@ -13,7 +13,7 @@
 // Bump on every change to the Python modules. Without it the browser and the
 // GitHub Pages CDN keep serving the previous copies after a push, so fixes
 // appear to have no effect.
-const BUILD = '2026-08-08-3';
+const BUILD = '2026-10-04-1';
 
 const PYODIDE_VERSION = '0.26.4';
 const PYODIDE_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
