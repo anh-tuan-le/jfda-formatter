@@ -13,7 +13,7 @@
 // Bump on every change to the Python modules. Without it the browser and the
 // GitHub Pages CDN keep serving the previous copies after a push, so fixes
 // appear to have no effect.
-const BUILD = '2026-10-04-1';
+const BUILD = '2026-10-04-2';
 
 const PYODIDE_VERSION = '0.26.4';
 const PYODIDE_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
@@ -249,6 +249,8 @@ export class JFDA {
   async buildDocx(manuscript) {
     await this.boot();
     const payload = { ...manuscript };
+    payload.back_matter = { ...(manuscript.back_matter || {}) };
+    for (const k of ['data_availability', 'funding', 'acknowledgements', 'gen_ai', 'conflicts']) if (k in manuscript) payload.back_matter[k] = manuscript[k] || '';
     delete payload._figures;
     payload.figures = (manuscript.figures || []).map(f => ({
       ...f, data: f.data ? this._b64(f.data) : null,
@@ -262,6 +264,8 @@ export class JFDA {
   async previewHtml(manuscript) {
     await this.boot();
     const payload = { ...manuscript };
+    payload.back_matter = { ...(manuscript.back_matter || {}) };
+    for (const k of ['data_availability', 'funding', 'acknowledgements', 'gen_ai', 'conflicts']) if (k in manuscript) payload.back_matter[k] = manuscript[k] || '';
     delete payload._figures; delete payload.figures;
     return this.bridge.build_preview_html(JSON.stringify(payload));
   }
