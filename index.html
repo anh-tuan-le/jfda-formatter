@@ -276,6 +276,10 @@
           <span style="font-size:11px;color:var(--color-neutral-600);line-height:1.4">{{ modelNote }}</span>
         </label>
 
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:8px">
+          <input type="checkbox" checked="{{ autoLatest }}" onChange="{{ onAutoLatest }}" style="accent-color:var(--color-accent);width:15px;height:15px">
+          <span>Always switch to the newest model</span>
+        </label>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-bottom:16px">
           <input type="checkbox" checked="{{ remember }}" onChange="{{ onRemember }}" style="accent-color:var(--color-accent);width:15px;height:15px">
           <span>Remember key in this browser</span>
@@ -357,11 +361,11 @@
 <script type="text/x-dc" data-dc-script>
 const PROVIDERS = {
   anthropic: { label: 'Claude', key: 'sk-ant-…',
-    fallback: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5'] },
+    fallback: ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-4-5'] },
   openai: { label: 'OpenAI', key: 'sk-…',
-    fallback: ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'] },
+    fallback: ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-luna'] },
   gemini: { label: 'Gemini', key: 'AIza…',
-    fallback: ['gemini-3.1-pro', 'gemini-3.6-flash', 'gemini-3.5-flash'] },
+    fallback: ['gemini-3.1-pro-preview', 'gemini-3.8-flash', 'gemini-3.5-flash-lite'] },
   custom: { label: 'Custom', key: 'token', fallback: [] },
 };
 
@@ -385,7 +389,7 @@ class Component extends DCLogic {
   state = {
     doc: null, fileName: '', fileMeta: '', status: 'Starting…', dot: 'var(--color-neutral-400)',
     preview: '', warnings: [],
-    provider: 'anthropic', aiKey: '', aiModel: 'claude-opus-4-6', remember: true,
+    provider: 'anthropic', aiKey: '', aiModel: 'claude-opus-5-5', remember: true, autoLatest: true,
     modelList: PROVIDERS.anthropic.fallback, modelNote: 'Default list — enter a key to load your account\u2019s models',
     aiBusy: false, chatLog: [], chatText: '', patch: null,
     aiTask: '', aiStage: '', aiSeconds: 0, aiChars: 0,
@@ -425,6 +429,7 @@ class Component extends DCLogic {
       if (s.key) this.setState({ aiKey: s.key });
       if (s.model) this.setState({ aiModel: s.model });
       if (s.remember === false) this.setState({ remember: false });
+      if (s.autoLatest === false) this.setState({ autoLatest: false });
     } catch (e) { /* first run */ }
 
     try {
@@ -439,9 +444,9 @@ class Component extends DCLogic {
   }
 
   saveAI() {
-    const { provider, aiKey, aiModel, remember } = this.state;
+    const { provider, aiKey, aiModel, remember, autoLatest } = this.state;
     localStorage.setItem('jfda.ai', JSON.stringify({
-      provider, model: aiModel, remember, key: remember ? aiKey : '',
+      provider, model: aiModel, remember, autoLatest, key: remember ? aiKey : '',
     }));
   }
 
@@ -539,15 +544,29 @@ class Component extends DCLogic {
   sortModels(list) {
     const rank = (m) => {
       let s = 0;
-      const v = m.match(/(\d+)[.-](\d+)/) || [0, 0, 0];
-      s += Number(v[1]) * 1000 + Number(v[2]) * 10;
-      if (/opus|sol|pro|-max/i.test(m)) s += 500;
+      const v = m.match(/(\d+)(?:[.-](\d{1,2})(?!\d))?/) || [0, 0, 0];
+      s += Number(v[1] || 0) * 1000 + Number(v[2] || 0) * 10;
+      if (/opus|fable|astra|-max/i.test(m)) s += 600;
+      else if (/sol|pro/i.test(m)) s += 500;
       else if (/sonnet|terra|flash(?!-lite)/i.test(m)) s += 300;
       if (/haiku|luna|lite|nano|mini/i.test(m)) s -= 200;
       if (/preview|exp|latest|\d{8}/i.test(m)) s -= 50;
       return -s;
     };
     return list.slice().sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  }
+
+  family(m) {
+    const f = String(m || '').toLowerCase().match(/opus|sonnet|haiku|fable|astra|sol|terra|luna|flash-lite|flash|pro|mini|nano/);
+    return f ? f[0] : '';
+  }
+
+  /* List is sorted newest-first, so the first stable id in the same family is the newest. */
+  newestInFamily(list, cur) {
+    const fam = this.family(cur);
+    if (!fam) return null;
+    const same = list.filter(m => this.family(m) === fam);
+    return same.find(m => !/preview|exp|\d{8}/i.test(m)) || same[0] || null;
   }
 
   async refreshModels() {
@@ -564,11 +583,16 @@ class Component extends DCLogic {
       const list = this.sortModels(await this.fetchModels());
       if (list && list.length) {
         this.modelCache[prov] = list;
-        this.setState({
-          modelList: list,
-          aiModel: list.includes(this.state.aiModel) ? this.state.aiModel : list[0],
-          modelNote: list.length + ' models available on this key',
-        }, () => this.saveAI());
+        const cur = this.state.aiModel;
+        const newest = this.newestInFamily(list, cur);
+        let model = list.includes(cur) ? cur : (newest || list[0]);
+        let note = list.length + ' models available on this key';
+        if (!list.includes(cur)) note = cur + ' is no longer offered — switched to ' + model;
+        else if (newest && newest !== cur) {
+          if (this.state.autoLatest) { model = newest; note = 'Updated to the newest ' + this.family(cur) + ': ' + newest; }
+          else note = 'Newer model available: ' + newest;
+        }
+        this.setState({ modelList: list, aiModel: model, modelNote: note }, () => this.saveAI());
       }
     } catch (e) {
       this.setState({ modelNote: 'Could not load models (' + e.message + ') — using defaults' });
@@ -609,15 +633,14 @@ class Component extends DCLogic {
       return (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
     }
 
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    const r = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key },
-      body: JSON.stringify({ model, max_completion_tokens: 16000,
-        messages: [{ role: 'system', content: AI_SYSTEM }, { role: 'user', content: prompt }] }),
+      body: JSON.stringify({ model, instructions: AI_SYSTEM, input: prompt, max_output_tokens: 16000 }),
     });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error?.message || 'HTTP ' + r.status);
-    return (j.choices?.[0]?.message?.content || '').trim();
+    return (j.output_text || (j.output || []).flatMap(o => o.content || []).map(c => c.text || '').join('')).trim();
   }
 
   chipDefs() {
@@ -856,6 +879,7 @@ ${(d.references || []).join('\n')}`);
       modelList: this.state.modelList,
       modelNote: this.state.modelNote,
       remember: this.state.remember,
+      autoLatest: this.state.autoLatest,
       aiBusy: this.state.aiBusy,
 
       chips: this.chipDefs().map(c => {
@@ -901,6 +925,7 @@ ${(d.references || []).join('\n')}`);
       onModel: (e) => this.setState({ aiModel: e.target.value }, () => this.saveAI()),
       onReloadModels: () => { this.modelCache = {}; this.refreshModels(); },
       onRemember: (e) => this.setState({ remember: e.target.checked }, () => this.saveAI()),
+      onAutoLatest: (e) => this.setState({ autoLatest: e.target.checked }, () => { this.saveAI(); this.modelCache = {}; this.refreshModels(); }),
       onApply: () => this.applyPatch(),
       onDiscard: () => this.setState({ patch: null }),
       onChatText: (e) => this.setState({ chatText: e.target.value }),
